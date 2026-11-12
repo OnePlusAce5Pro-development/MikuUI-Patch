@@ -1,0 +1,231 @@
+From b7e7bb63f09b151e74f436a96891e03fffeb6533 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Mon, 12 Oct 2026 20:55:21 +0300
+Subject: [PATCH] Settings: Use a SurfaceView for the HAL-owned face
+ preview
+
+The HAL sizes its camera stream from the surface buffer, so that buffer
+must be a size the camera supports. A TextureView always resizes its
+SurfaceTexture to the view and with the previous implementation, so
+enroll failed on Pixel 7+ because it was requesting a 1008x1008
+resulution which is not supported by the camera.
+
+Test: enroll face on Pixel 7 and newer
+Assisted-by: LLM
+Change-Id: I592df8edcf4940a563c34234d4f028539c068e63
+---
+ res/layout/face_enroll_enrolling.xml          |  7 ++
+ res/values/miku_config.xml                    |  3 +
+ .../biometrics/face/FaceEnrollEnrolling.java  |  8 ++
+ .../face/FaceEnrollPreviewFragment.java       | 83 +++++++++++++++----
+ 4 files changed, 86 insertions(+), 15 deletions(-)
+
+diff --git a/res/layout/face_enroll_enrolling.xml b/res/layout/face_enroll_enrolling.xml
+index abf8001..f7957d8 100644
+--- a/res/layout/face_enroll_enrolling.xml
++++ b/res/layout/face_enroll_enrolling.xml
+@@ -60,6 +60,13 @@
+                     android:layout_height="wrap_content"
+                     android:contentDescription="@null" />
+ 
++                <SurfaceView
++                    android:id="@+id/surface_view"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:visibility="gone"
++                    android:contentDescription="@null" />
++
+                 <com.android.settings.biometrics.face.FaceEnrollProgressView
+                     android:id="@+id/progress_view"
+                     android:layout_width="match_parent"
+diff --git a/res/values/miku_config.xml b/res/values/miku_config.xml
+index 50cdbfb..952d03f 100644
+--- a/res/values/miku_config.xml
++++ b/res/values/miku_config.xml
+@@ -21,6 +21,9 @@
+     <bool name="config_show_battery_info" translatable="false">true</bool>
+     <!-- Whether Settings should open a separate camera preview during face enrollment -->
+     <bool name="config_face_enroll_hal_owns_camera" translatable="false">false</bool>
++    <!-- HAL-owned face preview size, must match a supported camera size -->
++    <integer name="face_preview_width">1080</integer>
++    <integer name="face_preview_height">1080</integer>
+     <!-- Whether the face HAL supports the require attention feature -->
+     <bool name="config_face_attention_supported" translatable="false">true</bool>
+ </resources> 
+diff --git a/src/com/android/settings/biometrics/face/FaceEnrollEnrolling.java b/src/com/android/settings/biometrics/face/FaceEnrollEnrolling.java
+index 6d90803..50a2a89 100644
+--- a/src/com/android/settings/biometrics/face/FaceEnrollEnrolling.java
++++ b/src/com/android/settings/biometrics/face/FaceEnrollEnrolling.java
+@@ -146,6 +146,14 @@ public class FaceEnrollEnrolling extends BiometricsEnrollEnrolling {
+         super.onDestroy();
+     }
+ 
++    @Override
++    public void onEnterAnimationComplete() {
++        super.onEnterAnimationComplete();
++        if (mPreviewFragment != null) {
++            mPreviewFragment.revealSurface();
++        }
++    }
++
+     @Override
+     protected boolean shouldFinishWhenBackgrounded() {
+         // Prevent super.onStop() from finishing, since we handle this in our onStop().
+diff --git a/src/com/android/settings/biometrics/face/FaceEnrollPreviewFragment.java b/src/com/android/settings/biometrics/face/FaceEnrollPreviewFragment.java
+index 22d6e7f..d210605 100644
+--- a/src/com/android/settings/biometrics/face/FaceEnrollPreviewFragment.java
++++ b/src/com/android/settings/biometrics/face/FaceEnrollPreviewFragment.java
+@@ -35,7 +35,10 @@ import android.util.Log;
+ import android.util.Size;
+ import android.util.TypedValue;
+ import android.view.Surface;
++import android.view.SurfaceHolder;
++import android.view.SurfaceView;
+ import android.view.TextureView;
++import android.view.View;
+ 
+ import com.android.settings.R;
+ import com.android.settings.biometrics.BiometricEnrollSidecar;
+@@ -52,6 +55,8 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+ 
+     private static final String TAG = "FaceEnrollPreviewFragment";
+ 
++    private static final long PREVIEW_REVEAL_FALLBACK_MS = 600;
++
+     private static final int MAX_PREVIEW_WIDTH = 1920;
+     private static final int MAX_PREVIEW_HEIGHT = 1080;
+ 
+@@ -66,7 +71,9 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+     private ParticleCollection.Listener mListener;
+     private boolean mHalOwnsCamera;
+     private Surface mPreviewSurface;
++    private SurfaceView mSurfaceView;
+     private Runnable mSurfaceReadyListener;
++    private boolean mPreviewRevealed;
+ 
+     // View used to contain the circular cutout and enrollment animation drawable
+     private FaceEnrollProgressView mProgressView;
+@@ -83,6 +90,23 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+         }
+     };
+ 
++    private final SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
++        @Override
++        public void surfaceCreated(SurfaceHolder holder) {
++            mPreviewSurface = holder.getSurface();
++            notifySurfaceReady();
++        }
++
++        @Override
++        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
++        }
++
++        @Override
++        public void surfaceDestroyed(SurfaceHolder holder) {
++            mPreviewSurface = null;
++        }
++    };
++
+     private final TextureView.SurfaceTextureListener mSurfaceTextureListener =
+             new TextureView.SurfaceTextureListener() {
+ 
+@@ -101,10 +125,6 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+ 
+         @Override
+         public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
+-            if (mPreviewSurface != null) {
+-                mPreviewSurface.release();
+-                mPreviewSurface = null;
+-            }
+             return true;
+         }
+ 
+@@ -191,21 +211,57 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         mHalOwnsCamera = getResources().getBoolean(R.bool.config_face_enroll_hal_owns_camera);
++        mTextureView = getActivity().findViewById(R.id.texture_view);
++        mSurfaceView = getActivity().findViewById(R.id.surface_view);
++        mProgressView = getActivity().findViewById(R.id.progress_view);
++
+         if (mHalOwnsCamera) {
+             // The face HAL keeps rendering into the initial preview surface, which is gone once
+             // the activity is recreated. Unlike portrait, locked is respected on large screens.
+             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
++
++            // The HAL renders into a SurfaceView buffer.
++            mTextureView.setVisibility(View.GONE);
++
++            // The preview surface is a separate, opaque layer that is not affected by the page's
++            // enter animation, so creating it early briefly reveals an unmasked square through the
++            // still-fading page. Keep it hidden until the page has settled.
++            mSurfaceView.postDelayed(this::revealSurface, PREVIEW_REVEAL_FALLBACK_MS);
++
++            // Pin the surface to a size the HAL supports.
++            mSurfaceView.getHolder().setFixedSize(
++                    getResources().getInteger(R.integer.face_preview_width),
++                    getResources().getInteger(R.integer.face_preview_height));
++
++            return;
+         }
+-        mTextureView = getActivity().findViewById(R.id.texture_view);
+-        mProgressView = getActivity().findViewById(R.id.progress_view);
+ 
+         mCameraManager = (CameraManager) getContext().getSystemService(Context.CAMERA_SERVICE);
+     }
+ 
++    public void revealSurface() {
++        if (!mHalOwnsCamera || mSurfaceView == null || mPreviewRevealed) {
++            return;
++        }
++        mPreviewRevealed = true;
++        mSurfaceView.setVisibility(View.VISIBLE);
++    }
++
+     @Override
+     public void onResume() {
+         super.onResume();
+ 
++        if (mHalOwnsCamera) {
++            // The face HAL opens the camera itself and renders into this SurfaceView.
++            final SurfaceHolder holder = mSurfaceView.getHolder();
++            holder.addCallback(mSurfaceHolderCallback);
++            if (holder.getSurface() != null && holder.getSurface().isValid()) {
++                mPreviewSurface = holder.getSurface();
++                notifySurfaceReady();
++            }
++            return;
++        }
++
+         // When the screen is turned off and turned back on, the SurfaceTexture is already
+         // available, and "onSurfaceTextureAvailable" will not be called. In that case, we can open
+         // a camera and start preview from here (otherwise, we wait until the surface is ready in
+@@ -220,7 +276,12 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+     @Override
+     public void onPause() {
+         super.onPause();
+-        closeCamera();
++        if (mHalOwnsCamera) {
++            mSurfaceView.getHolder().removeCallback(mSurfaceHolderCallback);
++            mPreviewSurface = null;
++        } else {
++            closeCamera();
++        }
+     }
+ 
+     @Override
+@@ -295,14 +356,6 @@ public class FaceEnrollPreviewFragment extends InstrumentedPreferenceFragment
+      * @param height The height of the texture view
+      */
+     private void openCamera(int width, int height) {
+-        if (mHalOwnsCamera) {
+-            // The face HAL opens the camera itself, only provide it a surface to render into.
+-            if (mPreviewSurface == null) {
+-                mPreviewSurface = new Surface(mTextureView.getSurfaceTexture());
+-            }
+-            notifySurfaceReady();
+-            return;
+-        }
+         try {
+             setUpCameraOutputs();
+             mCameraManager.openCamera(mCameraId, mCameraStateCallback, mHandler);

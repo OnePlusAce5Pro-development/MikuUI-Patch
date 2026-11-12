@@ -1,0 +1,24 @@
+From a36b979f61832540d9afa20647ff5cf4d86bf2b6 Mon Sep 17 00:00:00 2001
+From: Bauuuuu <abansode@outlook.com>
+Date: Tue, 15 May 2018 14:14:32 +0200
+Subject: [PATCH 06/14] base: Add CUSTOM metrics const.
+
+Change-Id: I4299fca7c4b8f38d513e3f044ebfb77a292e9094
+(cherry picked from commit e58161ad533476384079ec25dead4b44ecb03590)
+---
+ proto/src/metrics_constants/metrics_constants.proto | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/proto/src/metrics_constants/metrics_constants.proto b/proto/src/metrics_constants/metrics_constants.proto
+index 208871fb7..69863577f 100644
+--- a/proto/src/metrics_constants/metrics_constants.proto
++++ b/proto/src/metrics_constants/metrics_constants.proto
+@@ -7447,5 +7447,8 @@ message MetricsEvent {
+     
+     //Miku Metrics
+     MIKU = 3939;
++
++    // CUSTOM Metrics
++    CUSTOM = 2772;
+   }
+ }

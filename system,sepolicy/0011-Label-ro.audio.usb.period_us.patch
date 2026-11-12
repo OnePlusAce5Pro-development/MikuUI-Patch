@@ -1,0 +1,29 @@
+From 1ee0065e59ef005c80c91fdd57dca0ed5097fca7 Mon Sep 17 00:00:00 2001
+From: Jindong Yue <jindong.yue@nxp.com>
+Date: Thu, 20 Jun 2024 17:56:10 +0900
+Subject: [PATCH] Label ro.audio.usb.period_us
+
+ro.audio.usb.period_us is used to set the period size
+for usb audio device.
+Add a audio label so vendor can set it.
+
+Change-Id: I7220dca372a35e9c40346c8b5534ca71e99226ef
+Signed-off-by: Jindong Yue <jindong.yue@nxp.com>
+---
+ private/property_contexts | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/private/property_contexts b/private/property_contexts
+index b803a93..be331bf 100644
+--- a/private/property_contexts
++++ b/private/property_contexts
+@@ -519,6 +519,9 @@ ro.audio.ihaladaptervendorextension_enabled u:object_r:system_audio_config_prop:
+ # vendor implementation IHalAdapterVendorExtension
+ ro.audio.ihaladaptervendorextension_libname u:object_r:system_audio_config_prop:s0 exact string
+ 
++# Integer property used to change the default period size for USB audio
++ro.audio.usb.period_us u:object_r:audio_config_prop:s0 exact int
++
+ persist.config.calibration_fac u:object_r:camera_calibration_prop:s0 exact string
+ 
+ config.disable_cameraservice u:object_r:camera_config_prop:s0 exact bool

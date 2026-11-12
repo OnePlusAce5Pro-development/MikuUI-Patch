@@ -1,0 +1,36 @@
+From 5a1068a8020d5214ab776f0aa558a064ddffd5fa Mon Sep 17 00:00:00 2001
+From: Alessandro Astone <ales.astone@gmail.com>
+Date: Thu, 1 Oct 2020 12:59:27 +0200
+Subject: [PATCH] soong: Add equivalent for LOCAL_EXPORT_CFLAGS
+
+Make export_cflags configurable so Blueprint files can use select()
+expressions, matching LineageOS.
+
+Co-authored-by: Michael Bestas <mkbestas@lineageos.org>
+Change-Id: I1802648b3a624aacf699beccb710fbee40425f16
+---
+ cc/library.go | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cc/library.go b/cc/library.go
+index 1c5c14f..a19614f 100644
+--- a/cc/library.go
++++ b/cc/library.go
+@@ -210,7 +210,7 @@ type FlagExporterProperties struct {
+ 	Export_system_include_dirs []string `android:"arch_variant,variant_prepend"`
+ 
+ 	// list of plain cc flags to be used for any module that links against this module.
+-	Export_cflags []string  `android:"arch_variant"`
++	Export_cflags proptools.Configurable[[]string] `android:"arch_variant"`
+ 
+ 	Target struct {
+ 		Vendor, Product struct {
+@@ -337,7 +337,7 @@ func (f *flagExporter) exportIncludes(ctx ModuleContext) {
+ }
+ 
+ func (f *flagExporter) exportExtraFlags(ctx ModuleContext) {
+-        f.flags = append(f.flags, f.Properties.Export_cflags...)
++	f.flags = append(f.flags, f.Properties.Export_cflags.GetOrDefault(ctx, nil)...)
+ }
+ 
+ // exportIncludesAsSystem registers the include directories and system include directories to be

@@ -1,0 +1,363 @@
+From 776e1c480497c0809edcc47a2a4e843b5c528d30 Mon Sep 17 00:00:00 2001
+From: thecrazyskull <anaskarbila@aospa.co>
+Date: Tue, 15 May 2018 11:58:02 -0400
+Subject: [PATCH 8/9] policy: Add support for device alert sliders.
+
+* Provide support for alert slider hardware.
+  Ability to swap order of alert slider within system setting.
+  Enable setting config_hasAlertSlider to true and defining
+  proc nodes for state path and UEvent match path.
+
+ * Contributors:
+ @ Sirhc95
+ @ ZVNexus
+ @ carlosavignano
+ @ thecrazyskull
+
+Adapted to MikuUI's miku_config.xml and miku_symbols.xml and the
+current Android 17 PhoneWindowManager/AudioService.
+
+Change-Id: I762a3e6f5f31b50cd96130a71ad263d5b9f1161e
+---
+ core/java/android/provider/Settings.java      |   6 +
+ core/res/res/values/miku_config.xml           |   9 ++
+ core/res/res/values/miku_symbols.xml          |   5 +
+ .../android/server/audio/AudioService.java    |  28 ++++
+ .../server/policy/AlertSliderObserver.java    | 130 ++++++++++++++++++
+ .../server/policy/PhoneWindowManager.java     |  29 ++++
+ 6 files changed, 207 insertions(+)
+ create mode 100644 services/core/java/com/android/server/policy/AlertSliderObserver.java
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index cacf2215f..30711e349 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -4412,6 +4412,12 @@ public final class Settings {
+      * functions for accessing individual settings entries.
+      */
+     public static final class System extends NameValueTable {
++        /**
++         * Whether the alert slider order is inverted.
++         * @hide
++         */
++        public static final String ALERT_SLIDER_ORDER = "alert_slider_order";
++
+         // NOTE: If you add new settings here, be sure to add them to
+         // com.android.providers.settings.SettingsProtoDumpUtil#dumpProtoSystemSettingsLocked.
+ 
+diff --git a/core/res/res/values/miku_config.xml b/core/res/res/values/miku_config.xml
+index 72311e94d..635810f69 100644
+--- a/core/res/res/values/miku_config.xml
++++ b/core/res/res/values/miku_config.xml
+@@ -27,4 +27,13 @@
+     <!-- Names of the key handler classes -->
+     <string-array name="config_deviceKeyHandlerClasses" translatable="false">
+     </string-array>
++
++    <!-- Whether device has an alert slider. -->
++    <bool name="config_hasAlertSlider">false</bool>
++
++    <!-- Path to the alert slider state node -->
++    <string name="alert_slider_state_path" translatable="false"></string>
++
++    <!-- UEvent match path for the alert slider -->
++    <string name="alert_slider_uevent_match_path" translatable="false"></string>
+ </resources>
+diff --git a/core/res/res/values/miku_symbols.xml b/core/res/res/values/miku_symbols.xml
+index a97e45744..f32f43b2e 100644
+--- a/core/res/res/values/miku_symbols.xml
++++ b/core/res/res/values/miku_symbols.xml
+@@ -28,4 +28,9 @@
+     <!-- Device keyhandlers -->
+     <java-symbol type="array" name="config_deviceKeyHandlerLibs" />
+     <java-symbol type="array" name="config_deviceKeyHandlerClasses" />
++
++    <!-- Alert Slider -->
++    <java-symbol type="bool" name="config_hasAlertSlider" />
++    <java-symbol type="string" name="alert_slider_state_path" />
++    <java-symbol type="string" name="alert_slider_uevent_match_path" />
+ </resources>
+diff --git a/services/core/java/com/android/server/audio/AudioService.java b/services/core/java/com/android/server/audio/AudioService.java
+index 45576af37..65c2b4b79 100644
+--- a/services/core/java/com/android/server/audio/AudioService.java
++++ b/services/core/java/com/android/server/audio/AudioService.java
+@@ -1388,6 +1388,9 @@ public class AudioService extends IAudioService.Stub
+     // exemptions in place for compat purposes.
+     private final AtomicInteger mHardeningOverride = new AtomicInteger(HardeningOverride.DEFAULT);
+ 
++    // Alert Slider
++    private boolean mHasAlertSlider = false;
++
+     // Defines the format for the connection "address" for ALSA devices
+     public static String makeAlsaAddressString(int card, int device) {
+         return "card=" + card + ";device=" + device;
+@@ -1589,6 +1592,10 @@ public class AudioService extends IAudioService.Stub
+                 tvLongPressVolumeKeysPerAdjustment, tvLongPressVolumeAdjustmentScaleFactor);
+ 
+         mAudioVolumeChangeHandler = new AudioVolumeChangeHandler(mAudioSystem);
++
++        mHasAlertSlider = mContext.getResources().getBoolean(R.bool.config_hasAlertSlider)
++                && !TextUtils.isEmpty(mContext.getResources().getString(R.string.alert_slider_state_path))
++                && !TextUtils.isEmpty(mContext.getResources().getString(R.string.alert_slider_uevent_match_path));
+         // Initialize volume
+         // Priority 1 - Android Property
+         // Priority 2 - Audio Policy Service
+@@ -4214,6 +4221,27 @@ public class AudioService extends IAudioService.Stub
+             }
+         }
+ 
++        if (mHasAlertSlider) {
++            int volumeType = sStreamVolumeAlias.get(streamType);
++            VolumeStreamState volumeState = getVssForStream(volumeType);
++            int state = getDeviceForStream(volumeType);
++            int index = volumeState.getIndex(state);
++            int ringerMode = getRingerModeInternal();
++            if ((volumeType == AudioSystem.STREAM_RING)
++                    && (direction == AudioManager.ADJUST_LOWER)
++                    && (index == 0)) {
++                direction = AudioManager.ADJUST_SAME;
++            }
++            if ((ringerMode == AudioManager.RINGER_MODE_SILENT)
++                    && (direction == AudioManager.ADJUST_RAISE
++                    && volumeType != AudioSystem.STREAM_MUSIC
++                    && volumeType != AudioSystem.STREAM_ALARM
++                    && volumeType != AudioSystem.STREAM_VOICE_CALL
++                    && !isInCommunication())) {
++                direction = AudioManager.ADJUST_SAME;
++            }
++        }
++
+         final boolean isMute = isMuteAdjust(direction);
+ 
+         streamType = replaceBtScoStreamWithVoiceCall(streamType, "adjustSuggestedStreamVolume");
+diff --git a/services/core/java/com/android/server/policy/AlertSliderObserver.java b/services/core/java/com/android/server/policy/AlertSliderObserver.java
+new file mode 100644
+index 000000000..d64d74440
+--- /dev/null
++++ b/services/core/java/com/android/server/policy/AlertSliderObserver.java
+@@ -0,0 +1,130 @@
++/*
++ * Copyright (C) 2021 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.policy;
++
++import android.app.NotificationManager;
++import android.content.Context;
++import android.media.AudioManager;
++import android.os.Handler;
++import android.os.Looper;
++import android.os.Message;
++import android.os.PowerManager;
++import android.os.PowerManager.WakeLock;
++import android.os.UEventObserver;
++import android.os.UserHandle;
++import android.provider.Settings;
++import android.text.TextUtils;
++import android.util.Log;
++import android.util.Slog;
++
++import java.io.BufferedReader;
++import java.io.FileReader;
++import java.io.IOException;
++
++public class AlertSliderObserver extends UEventObserver {
++    private static final String TAG = AlertSliderObserver.class.getSimpleName();
++    private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
++
++    private int mState;
++
++    private final Context mContext;
++    private final AudioManager mAudioManager;
++    private final WakeLock mWakeLock;
++
++    public AlertSliderObserver(Context context) {
++        mContext = context;
++        mAudioManager = context.getSystemService(AudioManager.class);
++        PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
++        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AlertSliderObserver");
++        init();
++    }
++
++    protected void startObserving(int pathId) {
++        String matchPath = mContext.getResources().getString(pathId);
++        if (!TextUtils.isEmpty(matchPath)) {
++            super.startObserving(matchPath);
++        }
++    }
++
++    @Override
++    public void onUEvent(UEventObserver.UEvent event) {
++        if (Log.isLoggable(TAG, Log.VERBOSE)) {
++            Slog.v(TAG, "Switch UEVENT: " + event.toString());
++        }
++
++        try {
++            int state = Integer.parseInt(event.get("SWITCH_STATE"));
++            if (state != mState) {
++                mState = state;
++                update();
++            }
++        } catch (NumberFormatException e) {
++            Slog.e(TAG, "Could not parse switch state from event " + event);
++        }
++    }
++
++    private void init() {
++        try {
++            final String path = mContext.getResources().getString(
++                    com.android.internal.R.string.alert_slider_state_path);
++            FileReader file = new FileReader(path);
++            BufferedReader br = new BufferedReader(file);
++            String value = br.readLine();
++            file.close();
++            br.close();
++            mState = Integer.valueOf(value);
++            update();
++        } catch (IOException e) {
++            Slog.w(TAG, "This device does not have an Alert Slider");
++            stopObserving();
++        }
++    }
++
++    protected void update() {
++        // Acquire wakelock when slider state changes.
++        mWakeLock.acquire();
++        mHandler.sendEmptyMessageDelayed(mState, 100);
++    }
++
++    private Handler mHandler = new Handler(Looper.myLooper(), null, true) {
++        @Override
++        public void handleMessage(Message msg) {
++            final boolean inverted = isOrderInverted();
++            switch (mState) {
++                case 1:
++                    mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_SILENT);
++                    break;
++                case 2:
++                    mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_VIBRATE);
++                    break;
++                case 3:
++                    mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_NORMAL);
++                    break;
++            }
++            if (mWakeLock.isHeld()) {
++                mWakeLock.release();
++            }
++        }
++    };
++
++    // Check if ordered has been set to inverted.
++    private boolean isOrderInverted() {
++        return Settings.System.getIntForUser(
++                    mContext.getContentResolver(), Settings.System.ALERT_SLIDER_ORDER, 0,
++                    UserHandle.USER_CURRENT) != 0;
++    }
++}
+diff --git a/services/core/java/com/android/server/policy/PhoneWindowManager.java b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+index dc0a3cb44..fa57cb2c1 100644
+--- a/services/core/java/com/android/server/policy/PhoneWindowManager.java
++++ b/services/core/java/com/android/server/policy/PhoneWindowManager.java
+@@ -153,6 +153,7 @@ import android.graphics.Rect;
+ import android.hardware.SensorPrivacyManager;
+ import android.hardware.display.BrightnessInfo;
+ import android.hardware.display.DisplayManager;
++import android.text.TextUtils;
+ import android.hardware.display.DisplayManagerInternal;
+ import android.hardware.hdmi.HdmiAudioSystemClient;
+ import android.hardware.hdmi.HdmiControlManager;
+@@ -166,6 +167,7 @@ import android.media.AudioManagerInternal;
+ import android.media.AudioSystem;
+ import android.media.IAudioService;
+ import android.media.session.MediaSessionLegacyHelper;
++import android.net.Uri;
+ import android.os.Binder;
+ import android.os.Bundle;
+ import android.os.DeviceIdleManager;
+@@ -487,6 +489,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     SideFpsEventHandler mSideFpsEventHandler;
+     LockPatternUtils mLockPatternUtils;
+     private boolean mHasFeatureAuto;
++    AlertSliderObserver mAlertSliderObserver;
+     private boolean mHasFeatureWatch;
+     private boolean mHasFeatureLeanback;
+     private boolean mHasFeatureHdmiCec;
+@@ -605,6 +608,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     boolean mWakeOnDpadKeyPress;
+     boolean mWakeOnAssistKeyPress;
+     boolean mWakeOnBackKeyPress;
++    private boolean mHasAlertSlider = false;
+     boolean mSilenceRingerOnSleepKey;
+     long mWakeUpToLastStateTimeout;
+     long mTurnOffTvToastSuppressionDelay;
+@@ -848,6 +852,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+     };
+ 
+     class SettingsObserver extends ContentObserver {
++        private final Uri SWAP_ALERT_SLIDER_ORDER_URI =
++                Settings.System.getUriFor(Settings.System.ALERT_SLIDER_ORDER);
++
+         SettingsObserver(Handler handler) {
+             super(handler);
+         }
+@@ -924,12 +931,24 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             resolver.registerContentObserver(Settings.Secure.getUriFor(
+                     Settings.Secure.NAV_BAR_KIDS_MODE), false, this,
+                     UserHandle.USER_ALL);
++            resolver.registerContentObserver(SWAP_ALERT_SLIDER_ORDER_URI, false, this,
++                    UserHandle.USER_ALL);
+             updateSettings();
+         }
+ 
+         @Override public void onChange(boolean selfChange) {
+             updateSettings();
+         }
++
++        @Override public void onChange(boolean selfChange, Uri uri) {
++            if (SWAP_ALERT_SLIDER_ORDER_URI.equals(uri)) {
++                if (mSystemReady && mAlertSliderObserver != null) {
++                    mAlertSliderObserver.update();
++                }
++                return;
++            }
++            updateSettings();
++        }
+     }
+ 
+     class MyWakeGestureListener extends WakeGestureListener {
+@@ -2327,6 +2346,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         mWakeOnBackKeyPress =
+                 res.getBoolean(com.android.internal.R.bool.config_wakeOnBackKeyPress);
+ 
++        // Init alert slider
++        mHasAlertSlider = mContext.getResources().getBoolean(R.bool.config_hasAlertSlider)
++                && !TextUtils.isEmpty(mContext.getResources().getString(R.string.alert_slider_state_path))
++                && !TextUtils.isEmpty(mContext.getResources().getString(R.string.alert_slider_uevent_match_path));
++
+         // Init display burn-in protection
+         boolean burnInProtectionEnabled = mContext.getResources().getBoolean(
+                 com.android.internal.R.bool.config_enableBurnInProtection);
+@@ -6004,6 +6028,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+             mDefaultDisplayPolicy.setDockMode(dockMode);
+         }
+ 
++        if (mHasAlertSlider) {
++            mAlertSliderObserver = new AlertSliderObserver(mContext);
++            mAlertSliderObserver.startObserving(com.android.internal.R.string.alert_slider_uevent_match_path);
++        }
++
+         readCameraLensCoverState();
+         updateUiMode();
+         mDefaultDisplayRotation.updateOrientationListener();

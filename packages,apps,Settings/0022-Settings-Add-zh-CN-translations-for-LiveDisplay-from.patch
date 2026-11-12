@@ -1,0 +1,45 @@
+From 73c9d2e2585ee8af083a03316da82b5d13211b57 Mon Sep 17 00:00:00 2001
+From: awa <2172245494@qq.com>
+Date: Fri, 13 Nov 2026 00:37:43 +0800
+Subject: [PATCH 09/10] Settings: Add zh-CN translations for LiveDisplay from
+ LineageParts
+
+Extracted from LineageOS/android_packages_apps_LineageParts lineage-24.0
+res/values-zh-rCN/strings.xml.
+
+No self-authored translations.
+
+Change-Id: I9a41686b375a7cdb3b6a721bcecf0601a34e0e21
+---
+ res/values-zh-rCN/miku_lineage_strings.xml | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+ create mode 100644 res/values-zh-rCN/miku_lineage_strings.xml
+
+diff --git a/res/values-zh-rCN/miku_lineage_strings.xml b/res/values-zh-rCN/miku_lineage_strings.xml
+new file mode 100644
+index 0000000..69983ab
+--- /dev/null
++++ b/res/values-zh-rCN/miku_lineage_strings.xml
+@@ -0,0 +1,22 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="color_calibration_summary">校准屏幕颜色</string>
++    <string name="color_calibration_title">颜色校准</string>
++    <string name="display_cutout_force_fullscreen_summary">强制旧式应用程序使用全屏长宽比</string>
++    <string name="display_cutout_force_fullscreen_title">全屏应用</string>
++    <string name="live_display_anti_flicker_summary">在弱光条件下，防止大量闪烁并减少眼睛疲劳。 这可能会降低色彩精度，并影响某些项目的显示方式。</string>
++    <string name="live_display_anti_flicker_title">防闪烁</string>
++    <string name="live_display_color_temperature_title">色温</string>
++    <string name="live_display_enhance_color_summary">为肤色、风景和其他图像提升色彩饱和度</string>
++    <string name="live_display_enhance_color_title">增强色彩</string>
++    <string name="live_display_low_power_summary">在不降低亮度的情况下调整屏幕使耗电最低</string>
++    <string name="live_display_low_power_title">降低耗电</string>
++    <string name="live_display_mode">显示模式</string>
++    <string name="live_display_outdoor_mode_summary">在强烈的阳光下自动增加屏幕亮度和饱和度</string>
++    <string name="live_display_outdoor_mode_title">自动户外模式</string>
++    <string name="live_display_reading_mode_summary">适合长时间阅读的灰度模式</string>
++    <string name="live_display_reading_mode_title">阅读模式</string>
++    <string name="picture_adjustment_summary">调整色相、饱和度、亮度和对比度</string>
++    <string name="picture_adjustment_title">图片调整</string>
++    <string name="live_display_summary">基于当前时间和环境条件来优化您的屏幕以改善可读性和减少视疲劳</string>
++</resources>

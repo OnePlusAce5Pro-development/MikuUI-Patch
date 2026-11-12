@@ -1,0 +1,41 @@
+From a0e169ede8d01704074e1a073a8d25f21e73f427 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Tue, 7 Apr 2020 12:00:00 +0200
+Subject: [PATCH] sepolicy: Sync sdcard_posix attribute with LineageOS 24.0
+
+sdcard_posix_contextmount_type is not part of the frozen API 33 prebuilt
+policy in LineageOS 24.0, drop it from the prebuilt policy.
+
+Change-Id: I04cd983a06ad20e58e70c861849353ecd86954aa
+---
+ prebuilts/api/33.0/public/attributes | 3 ---
+ prebuilts/api/33.0/public/domain.te  | 2 +-
+ 2 files changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/prebuilts/api/33.0/public/attributes b/prebuilts/api/33.0/public/attributes
+index 1719935..742264a 100644
+--- a/prebuilts/api/33.0/public/attributes
++++ b/prebuilts/api/33.0/public/attributes
+@@ -30,9 +30,6 @@ attribute contextmount_type;
+ # example.
+ attribute fusefs_type;
+ 
+-# All types used for sdcard_posix context= mounts.
+-attribute sdcard_posix_contextmount_type;
+-
+ # All types used for files that can exist on a labeled fs.
+ # Do not use for pseudo file types.
+ # On change, update CHECK_FC_ASSERT_ATTRS
+diff --git a/prebuilts/api/33.0/public/domain.te b/prebuilts/api/33.0/public/domain.te
+index ed1a672..de529f5 100644
+--- a/prebuilts/api/33.0/public/domain.te
++++ b/prebuilts/api/33.0/public/domain.te
+@@ -516,7 +516,7 @@ neverallow * rootfs:file { create write setattr relabelto append unlink link ren
+ 
+ # Restrict context mounts to specific types marked with
+ # the contextmount_type attribute.
+-neverallow * {fs_type -contextmount_type -sdcard_posix_contextmount_type}:filesystem relabelto;
++neverallow * {fs_type -contextmount_type}:filesystem relabelto;
+ 
+ # Ensure that context mount types are not writable, to ensure that
+ # the write to /system restriction above is not bypassed via context=

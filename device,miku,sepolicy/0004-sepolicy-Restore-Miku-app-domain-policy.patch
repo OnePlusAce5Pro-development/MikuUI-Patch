@@ -1,0 +1,297 @@
+From 9fbaaf556a9d90ec54173772791ce23606ad3c0b Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Sat, 22 Aug 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore Miku app domain policy
+
+Restore the MikuUI rules for adbroot, bootanim, cameraserver,
+platform apps, system apps, system_server and the updater.
+
+Change-Id: I87b189d9792089486fd2f94227b9d085ba9e506f
+---
+ common/private/adbroot.te          |  3 ++
+ common/private/bootanim.te         |  4 ++-
+ common/private/cameraserver.te     |  6 ++--
+ common/private/crash_dump.te       |  1 +
+ common/private/device_as_webcam.te |  1 +
+ common/private/fsck_untrusted.te   |  2 ++
+ common/private/kcmdlinectrl.te     |  2 ++
+ common/private/linkerconfig.te     |  1 +
+ common/private/mediashell_app.te   | 46 ++++++++++++++++++++++++++++++
+ common/private/misctrl.te          |  2 ++
+ common/private/odrefresh.te        |  1 +
+ common/private/platform_app.te     | 10 +++++--
+ common/private/shell.te            |  1 +
+ common/private/system_app.te       | 14 +++++++--
+ common/private/system_server.te    | 15 +++++-----
+ common/private/toolbox.te          |  1 +
+ common/private/untrusted_app.te    |  4 +--
+ common/private/updater_app.te      |  3 ++
+ 18 files changed, 98 insertions(+), 19 deletions(-)
+ create mode 100644 common/private/crash_dump.te
+ create mode 100644 common/private/device_as_webcam.te
+ create mode 100644 common/private/fsck_untrusted.te
+ create mode 100644 common/private/kcmdlinectrl.te
+ create mode 100644 common/private/linkerconfig.te
+ create mode 100644 common/private/mediashell_app.te
+ create mode 100644 common/private/misctrl.te
+ create mode 100644 common/private/odrefresh.te
+ create mode 100644 common/private/shell.te
+ create mode 100644 common/private/toolbox.te
+
+diff --git a/common/private/adbroot.te b/common/private/adbroot.te
+index de201a6..828ce90 100644
+--- a/common/private/adbroot.te
++++ b/common/private/adbroot.te
+@@ -7,6 +7,9 @@ binder_use(adbroot)
+ binder_service(adbroot)
+ add_service(adbroot, adbroot_service)
+ 
++allow adbroot package_native_service:service_manager find;
++binder_call(adbroot, system_server)
++
+ allow adbroot adbroot_data_file:dir rw_dir_perms;
+ allow adbroot adbroot_data_file:file create_file_perms;
+ 
+diff --git a/common/private/bootanim.te b/common/private/bootanim.te
+index df0a07f..a3999bc 100644
+--- a/common/private/bootanim.te
++++ b/common/private/bootanim.te
+@@ -1,2 +1,4 @@
+-# persist.sys.theme selects bootanimation-dark.zip
++dontaudit bootanim system_data_file:dir search;
++
++# Miku-specific (restored)
+ get_prop(bootanim, theme_prop)
+diff --git a/common/private/cameraserver.te b/common/private/cameraserver.te
+index ac064ac..8b0d9f0 100644
+--- a/common/private/cameraserver.te
++++ b/common/private/cameraserver.te
+@@ -1,5 +1,5 @@
+-# Use HALs
+-hal_client_domain(cameraserver, hal_lineage_camera_motor)
+-
+ # Let cameraserver find camera properties
+ get_prop(cameraserver, camera2_extensions_prop)
++
++# Miku-specific (restored)
++hal_client_domain(cameraserver, hal_lineage_camera_motor)
+diff --git a/common/private/crash_dump.te b/common/private/crash_dump.te
+new file mode 100644
+index 0000000..0f38c1c
+--- /dev/null
++++ b/common/private/crash_dump.te
+@@ -0,0 +1 @@
++get_prop(crash_dump, custom_version_prop)
+diff --git a/common/private/device_as_webcam.te b/common/private/device_as_webcam.te
+new file mode 100644
+index 0000000..48cbf5f
+--- /dev/null
++++ b/common/private/device_as_webcam.te
+@@ -0,0 +1 @@
++get_prop(device_as_webcam, usb_uvc_config_prop)
+diff --git a/common/private/fsck_untrusted.te b/common/private/fsck_untrusted.te
+new file mode 100644
+index 0000000..5d12f76
+--- /dev/null
++++ b/common/private/fsck_untrusted.te
+@@ -0,0 +1,2 @@
++# External storage
++allow fsck_untrusted self:capability sys_admin;
+diff --git a/common/private/kcmdlinectrl.te b/common/private/kcmdlinectrl.te
+new file mode 100644
+index 0000000..c784740
+--- /dev/null
++++ b/common/private/kcmdlinectrl.te
+@@ -0,0 +1,2 @@
++dontaudit kcmdlinectrl sysfs_dt_firmware_android:dir r_dir_perms;
++dontaudit kcmdlinectrl sysfs_dt_firmware_android:file r_file_perms;
+diff --git a/common/private/linkerconfig.te b/common/private/linkerconfig.te
+new file mode 100644
+index 0000000..2d090d2
+--- /dev/null
++++ b/common/private/linkerconfig.te
+@@ -0,0 +1 @@
++allow linkerconfig self:capability kill;
+diff --git a/common/private/mediashell_app.te b/common/private/mediashell_app.te
+new file mode 100644
+index 0000000..6b728f3
+--- /dev/null
++++ b/common/private/mediashell_app.te
+@@ -0,0 +1,46 @@
++# Domains needed by mediashell_app
++
++type mediashell_app, domain, coredomain;
++
++app_domain(mediashell_app)
++net_domain(mediashell_app)
++bluetooth_domain(mediashell_app)
++
++# Find services that expose both @SystemAPI and normal APIs.
++allow mediashell_app app_api_service:service_manager find;
++allow mediashell_app system_api_service:service_manager find;
++
++allow mediashell_app audioserver_service:service_manager find;
++allow mediashell_app cameraserver_service:service_manager find;
++allow mediashell_app drmserver_service:service_manager find;
++allow mediashell_app mediadrmserver_service:service_manager find;
++allow mediashell_app mediaextractor_service:service_manager find;
++allow mediashell_app mediametrics_service:service_manager find;
++allow mediashell_app mediaserver_service:service_manager find;
++allow mediashell_app network_watchlist_service:service_manager find;
++allow mediashell_app nfc_service:service_manager find;
++allow mediashell_app radio_service:service_manager find;
++
++# Chromium provides infrastructure to load flags from a static file path for
++# testing purposes. Allow this on debug/eng builds only.
++userdebug_or_eng(`
++   allow mediashell_app shell_data_file:file r_file_perms;
++   allow mediashell_app shell_data_file:dir r_dir_perms;
++')
++
++# MediaShell's Chromium crashpad uses the dynamic linker to load native
++# executables from an APK on Q+ and ptrace to report logs to Google Home App.
++allow mediashell_app system_linker_exec:file execute_no_trans;
++allow mediashell_app self:process ptrace;
++
++allow mediashell_app audioserver:fifo_file { write };
++
++allow mediashell_app proc_vendor_sched:dir search;
++
++# suppress denials for non-API accesses.
++dontaudit mediashell_app proc:file read;
++
++# wifi ssid suffix helps identify device
++get_prop(mediashell_app, odm_cast_prop)
++
++dontaudit mediashell_app wifi_config_prop:file r_file_perms;
+diff --git a/common/private/misctrl.te b/common/private/misctrl.te
+new file mode 100644
+index 0000000..105563f
+--- /dev/null
++++ b/common/private/misctrl.te
+@@ -0,0 +1,2 @@
++dontaudit misctrl sysfs_dt_firmware_android:dir r_dir_perms;
++dontaudit misctrl sysfs_dt_firmware_android:file r_file_perms;
+diff --git a/common/private/odrefresh.te b/common/private/odrefresh.te
+new file mode 100644
+index 0000000..8275b1c
+--- /dev/null
++++ b/common/private/odrefresh.te
+@@ -0,0 +1 @@
++dontaudit odrefresh property_type:file { getattr open read map };
+diff --git a/common/private/platform_app.te b/common/private/platform_app.te
+index 1a0fcb6..65993ba 100644
+--- a/common/private/platform_app.te
++++ b/common/private/platform_app.te
+@@ -1,8 +1,12 @@
+ # Allow NFC service to be found
+ allow platform_app nfc_service:service_manager find;
+ 
+-# Allow FOD HAL service to be found
+-hal_client_domain(platform_app, hal_lineage_fod)
++# Allow LiveDisplay HAL service to be found
++hal_client_domain(platform_app, hal_lineage_livedisplay)
++
++# Allow PowerShare HAL service to be found
++hal_client_domain(platform_app, hal_lineage_powershare)
+ 
+-# Zygote
++# Miku-specific (restored)
++hal_client_domain(platform_app, hal_lineage_fod)
+ allow platform_app zygote:unix_stream_socket getopt;
+diff --git a/common/private/shell.te b/common/private/shell.te
+new file mode 100644
+index 0000000..680ff78
+--- /dev/null
++++ b/common/private/shell.te
+@@ -0,0 +1 @@
++get_prop(shell, custom_version_prop)
+diff --git a/common/private/system_app.te b/common/private/system_app.te
+index 3dd5d40..be6a637 100644
+--- a/common/private/system_app.te
++++ b/common/private/system_app.te
+@@ -1,11 +1,19 @@
++# Allow Settings to read custom legal URL
++get_prop(system_app, legal_url_prop)
++
++# Allow Settings/LineageParts to read custom version
++get_prop(system_app, custom_version_prop)
++
+ # Allow Settings to read ro.vendor.build.security_patch
+ get_prop(system_app, vendor_security_patch_level_prop)
+ 
+ # Allow access to the HALs
++hal_client_domain(system_app, hal_lineage_livedisplay)
+ hal_client_domain(system_app, hal_lineage_touch)
+ 
+-# Allow access to governor node
+-allow system_app sysfs_devices_system_cpu:file write;
++# Allow SetupWizard to set recovery update prop
++set_prop(system_app, recovery_update_prop)
+ 
+-# Zygote
++# Miku-specific (restored)
++allow system_app sysfs_devices_system_cpu:file write;
+ allow system_app zygote:unix_stream_socket getopt;
+diff --git a/common/private/system_server.te b/common/private/system_server.te
+index c4e21a6..b2ca953 100644
+--- a/common/private/system_server.te
++++ b/common/private/system_server.te
+@@ -3,17 +3,18 @@ allow system_server storage_stub_file:dir getattr;
+ allow system_server adbroot_service:service_manager find;
+ 
+ # Use HALs
+-hal_client_domain(system_server, hal_lineage_fod)
++hal_client_domain(system_server, hal_lineage_health)
++hal_client_domain(system_server, hal_lineage_livedisplay)
+ hal_client_domain(system_server, hal_lineage_touch)
+-
+-# App Lock
+-add_service(system_server, applock_service);
++hal_client_domain(system_server, hal_lineage_powershare)
+ 
+ # Let system server find camera properties
+ get_prop(system_server, camera2_extensions_prop)
+ 
+-# Boost framework
+-add_service(system_server, boost_framework_service);
+-
+ # Let system server toggle xtra-daemon
+ set_prop(system_server, xtra_control_prop)
++
++# Miku-specific (restored)
++hal_client_domain(system_server, hal_lineage_fod)
++add_service(system_server, applock_service);
++add_service(system_server, boost_framework_service);
+diff --git a/common/private/toolbox.te b/common/private/toolbox.te
+new file mode 100644
+index 0000000..64f5780
+--- /dev/null
++++ b/common/private/toolbox.te
+@@ -0,0 +1 @@
++allow toolbox self:capability kill;
+diff --git a/common/private/untrusted_app.te b/common/private/untrusted_app.te
+index b436dc6..11d0f61 100644
+--- a/common/private/untrusted_app.te
++++ b/common/private/untrusted_app.te
+@@ -1,5 +1,5 @@
+ allow untrusted_app_all lineage_profile_service:service_manager find;
+-allow untrusted_app_all lineage_weather_service:service_manager find;
+ 
+-# Zygote
++# Miku-specific (restored)
++allow untrusted_app_all lineage_weather_service:service_manager find;
+ allow untrusted_app_all zygote:unix_stream_socket getopt;
+diff --git a/common/private/updater_app.te b/common/private/updater_app.te
+index 8589183..657588f 100644
+--- a/common/private/updater_app.te
++++ b/common/private/updater_app.te
+@@ -22,5 +22,8 @@ allow updater_app cache_recovery_file:file create_file_perms;
+ allow updater_app ota_package_file:dir create_dir_perms;
+ allow updater_app ota_package_file:file create_file_perms;
+ 
++get_prop(updater_app, custom_version_prop)
+ get_prop(updater_app, default_prop)
+ get_prop(updater_app, build_prop)
++
++set_prop(updater_app, recovery_update_prop)

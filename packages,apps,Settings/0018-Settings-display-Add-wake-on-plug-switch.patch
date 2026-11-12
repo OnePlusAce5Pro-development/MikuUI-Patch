@@ -1,0 +1,27 @@
+From 036ba1a28fa5b88bfe5c2f6d7a9b788bf8106da2 Mon Sep 17 00:00:00 2001
+From: Jon Evans <jon@craftyjon.com>
+Date: Sun, 30 Nov 2014 15:29:13 -0500
+Subject: [PATCH 05/10] Settings: display: Add wake on plug switch
+
+Change-Id: I22ee2a05040561cca796814573adc5226f1f03d4
+---
+ res/xml/display_settings.xml | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/res/xml/display_settings.xml b/res/xml/display_settings.xml
+index a4fec5b..34c2cdf 100644
+--- a/res/xml/display_settings.xml
++++ b/res/xml/display_settings.xml
+@@ -246,5 +246,12 @@
+             android:summary="@string/high_touch_sensitivity_summary"
+             android:defaultValue="false"
+             settings:controller="com.android.settings.custom.touch.HighTouchSensitivitySettingsPreferenceController" />
++
++        <com.android.settings.custom.preference.GlobalSettingSwitchPreference
++            android:key="wake_when_plugged_or_unplugged"
++            android:title="@string/wake_when_plugged_or_unplugged_title"
++            android:summary="@string/wake_when_plugged_or_unplugged_summary"
++            android:defaultValue="@*android:bool/config_unplugTurnsOnScreen"
++            settings:requiresConfig="@bool/config_show_top_level_battery" />
+     </PreferenceCategory>
+ </PreferenceScreen>

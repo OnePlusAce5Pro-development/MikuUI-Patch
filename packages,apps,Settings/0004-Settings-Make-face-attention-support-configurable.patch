@@ -1,0 +1,27 @@
+From b2fe48ffae0ba3266211be2c919392c1181d5bc1 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Mon, 28 Sep 2026 10:43:13 +0200
+Subject: [PATCH] Settings: Add attention support config
+
+Add config_face_attention_supported to miku_config.xml.
+
+The require attention toggle only works if the face HAL implements
+REQUIRE_ATTENTION, which can't be queried at runtime.
+
+Assisted-by: LLM
+Change-Id: I67bdc789a3c3c6cf66a843c4796b75044855a8cd
+---
+ res/values/miku_config.xml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/res/values/miku_config.xml b/res/values/miku_config.xml
+index aeff410..50cdbfb 100644
+--- a/res/values/miku_config.xml
++++ b/res/values/miku_config.xml
+@@ -21,4 +21,6 @@
+     <bool name="config_show_battery_info" translatable="false">true</bool>
+     <!-- Whether Settings should open a separate camera preview during face enrollment -->
+     <bool name="config_face_enroll_hal_owns_camera" translatable="false">false</bool>
++    <!-- Whether the face HAL supports the require attention feature -->
++    <bool name="config_face_attention_supported" translatable="false">true</bool>
+ </resources> 

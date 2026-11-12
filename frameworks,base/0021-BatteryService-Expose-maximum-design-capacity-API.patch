@@ -1,0 +1,127 @@
+From 7278bc4e99197f89f57cadf1fe3f6db48d4c20e4 Mon Sep 17 00:00:00 2001
+From: Jyotiraditya Panda <jyotiraditya@aospa.co>
+Date: Thu, 22 Feb 2024 23:25:05 +0900
+Subject: [PATCH 12/14] BatteryService: Expose [maximum|design] capacity API
+
+Change-Id: If2074ebb47c90d7daf1d4761289b9d44ae4f3039
+Signed-off-by: Jyotiraditya Panda <jyotiraditya@aospa.co>
+---
+ core/java/android/os/BatteryManager.java      | 14 +++++++
+ .../com/android/server/BatteryService.java    | 37 ++++++++++++++++++-
+ 2 files changed, 49 insertions(+), 2 deletions(-)
+
+diff --git a/core/java/android/os/BatteryManager.java b/core/java/android/os/BatteryManager.java
+index 903c7637a..27b1ac2ce 100644
+--- a/core/java/android/os/BatteryManager.java
++++ b/core/java/android/os/BatteryManager.java
+@@ -173,6 +173,20 @@ public class BatteryManager {
+     public static final String EXTRA_CHARGING_STATUS = "android.os.extra.CHARGING_STATUS";
+     // TODO: b/461917615 - add EXTRA_CHARGING_STATUS API constants with clear definitions
+ 
++    /**
++     * Extra for {@link android.content.Intent#ACTION_BATTERY_CHANGED}:
++     * Int value representing the estimated battery full charge capacity in microampere-hours.
++     * @hide
++     */
++    public static final String EXTRA_MAXIMUM_CAPACITY = "android.os.extra.MAXIMUM_CAPACITY";
++
++    /**
++     * Extra for {@link android.content.Intent#ACTION_BATTERY_CHANGED}:
++     * Int value representing the battery full charge design capacity in microampere-hours.
++     * @hide
++     */
++    public static final String EXTRA_DESIGN_CAPACITY = "android.os.extra.DESIGN_CAPACITY";
++
+     /**
+      * Battery capacity level is unsupported.
+      *
+diff --git a/services/core/java/com/android/server/BatteryService.java b/services/core/java/com/android/server/BatteryService.java
+index e0b36ab69..cb96c997c 100644
+--- a/services/core/java/com/android/server/BatteryService.java
++++ b/services/core/java/com/android/server/BatteryService.java
+@@ -256,6 +256,20 @@ public final class BatteryService extends SystemService {
+      * the {@link Intent#ACTION_BATTERY_CHANGED} broadcast or not.
+      */
+     private int mLastBroadcastBatteryCapacityLevel;
++    /**
++     * {@link HealthInfo#batteryFullChargeUah} value when {@link Intent#ACTION_BATTERY_CHANGED}
++     * broadcast was sent last.
++     * Note: This value may be used for internal operations and/or to determine whether to trigger
++     * the {@link Intent#ACTION_BATTERY_CHANGED} broadcast or not.
++     */
++    private int mLastBroadcastBatteryFullCharge;
++    /**
++     * {@link HealthInfo#batteryFullChargeDesignCapacityUah} value when
++     * {@link Intent#ACTION_BATTERY_CHANGED} broadcast was sent last.
++     * Note: This value may be used for internal operations and/or to determine whether to trigger
++     * the {@link Intent#ACTION_BATTERY_CHANGED} broadcast or not.
++     */
++    private int mLastBroadcastBatteryFullChargeDesign;
+     /**
+      * {@link #mPlugType} value when {@link Intent#ACTION_BATTERY_CHANGED}
+      * broadcast was sent last.
+@@ -814,7 +828,10 @@ public final class BatteryService extends SystemService {
+                 || mInvalidCharger != mLastBroadcastInvalidCharger
+                 || mHealthInfo.batteryCycleCount != mLastBroadcastBatteryCycleCount
+                 || mHealthInfo.chargingState != mLastBroadcastChargingState
+-                || mHealthInfo.batteryCapacityLevel != mLastBroadcastBatteryCapacityLevel)) {
++                || mHealthInfo.batteryCapacityLevel != mLastBroadcastBatteryCapacityLevel
++                || mHealthInfo.batteryFullChargeUah != mLastBroadcastBatteryFullCharge
++                || mHealthInfo.batteryFullChargeDesignCapacityUah !=
++                        mLastBroadcastBatteryFullChargeDesign)) {
+ 
+             if (mPlugType != mLastBroadcastPlugType) {
+                 if (mLastBroadcastPlugType == BATTERY_PLUGGED_NONE) {
+@@ -1004,6 +1021,9 @@ public final class BatteryService extends SystemService {
+                 mLastBroadcastBatteryCycleCount = mHealthInfo.batteryCycleCount;
+                 mLastBroadcastChargingState = mHealthInfo.chargingState;
+                 mLastBroadcastBatteryCapacityLevel = mHealthInfo.batteryCapacityLevel;
++                mLastBroadcastBatteryFullCharge = mHealthInfo.batteryFullChargeUah;
++                mLastBroadcastBatteryFullChargeDesign =
++                        mHealthInfo.batteryFullChargeDesignCapacityUah;
+             }
+         }
+     }
+@@ -1039,6 +1059,10 @@ public final class BatteryService extends SystemService {
+         intent.putExtra(BatteryManager.EXTRA_CYCLE_COUNT, mHealthInfo.batteryCycleCount);
+         intent.putExtra(BatteryManager.EXTRA_CHARGING_STATUS, mHealthInfo.chargingState);
+         intent.putExtra(BatteryManager.EXTRA_CAPACITY_LEVEL, mHealthInfo.batteryCapacityLevel);
++        intent.putExtra(BatteryManager.EXTRA_MAXIMUM_CAPACITY, mHealthInfo.batteryFullChargeUah);
++        intent.putExtra(
++                BatteryManager.EXTRA_DESIGN_CAPACITY,
++                mHealthInfo.batteryFullChargeDesignCapacityUah);
+         if (DEBUG) {
+             Slog.d(TAG, "Sending ACTION_BATTERY_CHANGED. scale:" + BATTERY_SCALE
+                     + ", info:" + mHealthInfo.toString());
+@@ -1131,6 +1155,10 @@ public final class BatteryService extends SystemService {
+         event.putInt(BatteryManager.EXTRA_CYCLE_COUNT, mHealthInfo.batteryCycleCount);
+         event.putInt(BatteryManager.EXTRA_CHARGING_STATUS, mHealthInfo.chargingState);
+         event.putInt(BatteryManager.EXTRA_CAPACITY_LEVEL, mHealthInfo.batteryCapacityLevel);
++        event.putInt(BatteryManager.EXTRA_MAXIMUM_CAPACITY, mHealthInfo.batteryFullChargeUah);
++        event.putInt(
++                BatteryManager.EXTRA_DESIGN_CAPACITY,
++                mHealthInfo.batteryFullChargeDesignCapacityUah);
+ 
+         boolean queueWasEmpty = mBatteryLevelsEventQueue.isEmpty();
+         mBatteryLevelsEventQueue.add(event);
+@@ -1284,7 +1312,10 @@ public final class BatteryService extends SystemService {
+                 || mInvalidCharger != mLastBroadcastInvalidCharger
+                 || mHealthInfo.batteryCycleCount != mLastBroadcastBatteryCycleCount
+                 || mHealthInfo.chargingState != mLastBroadcastChargingState
+-                || mHealthInfo.batteryCapacityLevel != mLastBroadcastBatteryCapacityLevel;
++                || mHealthInfo.batteryCapacityLevel != mLastBroadcastBatteryCapacityLevel
++                || mHealthInfo.batteryFullChargeUah != mLastBroadcastBatteryFullCharge
++                || mHealthInfo.batteryFullChargeDesignCapacityUah !=
++                        mLastBroadcastBatteryFullChargeDesign;
+ 
+         // We only rate limit based on changes in the temp, voltage.
+         if (otherStatesUpdated) {
+@@ -1658,6 +1689,8 @@ public final class BatteryService extends SystemService {
+                 pw.println("  Charging state: " + mHealthInfo.chargingState);
+                 pw.println("  Charging policy: " + mHealthInfo.chargingPolicy);
+                 pw.println("  Capacity level: " + mHealthInfo.batteryCapacityLevel);
++                pw.println("  Maximum capacity: " + mHealthInfo.batteryFullChargeUah);
++                pw.println("  Design capacity: " + mHealthInfo.batteryFullChargeDesignCapacityUah);
+             } else {
+                 Shell shell = new Shell();
+                 shell.exec(mBinderService, null, fd, null, args, null, new ResultReceiver(null));

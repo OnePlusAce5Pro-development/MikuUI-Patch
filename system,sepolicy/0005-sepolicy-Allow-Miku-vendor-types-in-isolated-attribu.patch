@@ -1,0 +1,32 @@
+From c025c2362e4a6644a1c53f5ef8e84e8651822f81 Mon Sep 17 00:00:00 2001
+From: Karthik Rathlavath <quic_karthiik@quicinc.com>
+Date: Tue, 11 Mar 2025 12:00:00 +0530
+Subject: [PATCH] sepolicy: Allow Miku vendor types in isolated attribute
+ check
+
+Allow the vendor sysfs, dspmanager and dspservice types in the
+isolated_compute_allowed attribute consistency test.
+
+Change-Id: I38294ec0d6dcb208e60d7a90557ad34b2c681875
+---
+ tests/sepolicy_tests.py | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/tests/sepolicy_tests.py b/tests/sepolicy_tests.py
+index 7254be0..5b15721 100644
+--- a/tests/sepolicy_tests.py
++++ b/tests/sepolicy_tests.py
+@@ -283,8 +283,11 @@ def TestIsolatedAttributeConsistency(test_policy):
+         "servicemanager": ["fd"],
+         "sysfs_gpu": ["dir", "file", "lnk_file"],
+         "toolbox_exec": ["file"],
+-        # extra types being granted to isolated_compute_app
+-        "isolated_compute_allowed": ["service_manager", "chr_file", "file"],
++        "vendor_sysfs_public": ["file", "dir", "lnk_file"],
++        "vendor_sysfs_soc": ["dir"],
++        "vendor_hal_dspmanager": ["binder", "fd"],
++        "vendor_dspservice": ["binder", "fd"],
++        "isolated_compute_allowed": ["service_manager", "chr_file", "file", "dir", "lnk_file", "fd", "binder"],
+     }
+ 
+     def resolveHalServerSubtype(target):

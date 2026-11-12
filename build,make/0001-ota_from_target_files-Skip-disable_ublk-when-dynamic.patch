@@ -1,0 +1,29 @@
+From 4e4ecaf90791ed3ba1d1e85c31ea49f6894abb10 Mon Sep 17 00:00:00 2001
+From: uwu-gl <moegluwu0@gmail.com>
+Date: Sun, 12 Jul 2026 22:20:01 +0800
+Subject: [PATCH] ota_from_target_files: Skip disable_ublk when dynamic
+ partition info is missing
+
+Change-Id: I58ab22546ccdddaed27026f5502a8b65c171594e
+---
+ tools/releasetools/ota_from_target_files.py | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/tools/releasetools/ota_from_target_files.py b/tools/releasetools/ota_from_target_files.py
+index b6a6fa9..ba20810 100755
+--- a/tools/releasetools/ota_from_target_files.py
++++ b/tools/releasetools/ota_from_target_files.py
+@@ -1546,9 +1546,10 @@ def main(argv):
+                        " SPL downgrade. Target SPL: {} Source SPL: {}"
+                        .format(target_spl, source_spl))
+   if OPTIONS.disable_ublk:
+-    logger.info("Disabling UBLK as requested")
+-    args[0] = ModifyTargetFilesDynamicPartitionInfo(
+-        args[0], "disable_ublk", "true")
++    if common.DoesInputFileContain(args[0], DYNAMIC_PARTITION_INFO):
++      logger.info("Disabling UBLK as requested")
++      args[0] = ModifyTargetFilesDynamicPartitionInfo(
++          args[0], "disable_ublk", "true")
+ 
+   if generate_ab:
+     GenerateAbOtaPackage(

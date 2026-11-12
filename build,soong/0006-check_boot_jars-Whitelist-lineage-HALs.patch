@@ -1,0 +1,24 @@
+From ebec37d2062ea21575b748d201f950884e33a31a Mon Sep 17 00:00:00 2001
+From: Tim Zimmermann <tim@linux4.de>
+Date: Fri, 10 May 2024 19:26:53 +0200
+Subject: [PATCH] check_boot_jars: Whitelist lineage HALs
+
+Change-Id: Id44b1e9997f140e2c1b5f61d88f597083884543c
+---
+ scripts/check_boot_jars/package_allowed_list.txt | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/scripts/check_boot_jars/package_allowed_list.txt b/scripts/check_boot_jars/package_allowed_list.txt
+index 1f7c9cf..c5fab47 100644
+--- a/scripts/check_boot_jars/package_allowed_list.txt
++++ b/scripts/check_boot_jars/package_allowed_list.txt
+@@ -239,6 +239,9 @@ com\.google\.wear\..*
+ vendor\.google_clockwork\.displayoffload3
+ vendor\.google_clockwork\.displayoffload3\..*
+ 
++# Lineage HALs
++vendor\.lineage\..*
++
+ # Lineage adds
+ lineageos\.platform
+ org\.lineageos\.platform\.internal

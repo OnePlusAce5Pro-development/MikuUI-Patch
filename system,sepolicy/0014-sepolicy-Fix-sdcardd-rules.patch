@@ -1,0 +1,30 @@
+From 32772dfc7146c5fcced1cb505266af3de861ace8 Mon Sep 17 00:00:00 2001
+From: Sevenrock <sevenrock@hotmail.de>
+Date: Sun, 12 Nov 2023 20:00:13 +0100
+Subject: [PATCH] sepolicy: Fix sdcardd rules
+
+https://android.googlesource.com/platform/system/sepolicy/+/9a5992336e888533ac3f6536f7ad9a70eb861396%5E%21/
+
+added new rules which cause a denial when formatting a sdcard as adopted
+storage:
+
+11-08 21:44:40.328  2768  2768 I auditd  : type=1400 audit(0.0:324): avc:  denied  { getattr } for  comm="sdcard" uid=1023 path="/mnt/expand/71ab5641-2b8e-4862-9e7c-251284fb6079/media/obb" dev="dm-4" ino=6275115 scontext=u:r:sdcardd:s0 tcontext=u:object_r:media_userdir_file:s0 tclass=dir permissive=0
+11-08 21:44:40.328  2768  2768 W sdcard  : type=1400 audit(0.0:324): avc:  denied  { getattr } for  uid=1023 path="/mnt/expand/71ab5641-2b8e-4862-9e7c-251284fb6079/media/obb" dev="dm-4" ino=6275115 scontext=u:r:sdcardd:s0 tcontext=u:object_r:media_userdir_file:s0 tclass=dir permissive=0
+
+Change-Id: I9f31aba8067a963e0626dce5bacdecbf8cbd0779
+---
+ private/sdcardd.te | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/private/sdcardd.te b/private/sdcardd.te
+index 7cea890..9e57a2d 100644
+--- a/private/sdcardd.te
++++ b/private/sdcardd.te
+@@ -17,6 +17,7 @@ allow sdcardd self:global_capability_class_set { setuid setgid dac_override dac_
+ allow sdcardd { sdcard_type fuse }:dir create_dir_perms;
+ allow sdcardd { sdcard_type fuse }:file create_file_perms;
+ 
++allow sdcardd media_userdir_file:dir r_dir_perms;
+ allow sdcardd media_rw_data_file:dir create_dir_perms;
+ allow sdcardd media_rw_data_file:file create_file_perms;
+ 

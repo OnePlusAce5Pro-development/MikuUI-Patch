@@ -1,0 +1,45 @@
+From 3e60d39c2d5b9d78b3d30a28294224b14cdf623c Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Wed, 10 Nov 2021 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore Miku common sepolicy build rules
+
+Change-Id: I46271b366db5741d6c5460a6c3b14142493aa777
+---
+ common/sepolicy.mk | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/common/sepolicy.mk b/common/sepolicy.mk
+index d3430d0..fe5c1bc 100644
+--- a/common/sepolicy.mk
++++ b/common/sepolicy.mk
+@@ -1,6 +1,6 @@
+ #
+ # This policy configuration will be used by all products that
+-# inherit from Miku UI
++# inherit from Lineage
+ #
+ 
+ ifeq ($(TARGET_COPY_OUT_VENDOR), vendor)
+@@ -9,12 +9,6 @@ TARGET_USES_PREBUILT_VENDOR_SEPOLICY ?= true
+ endif
+ endif
+ 
+-ifeq ($(TARGET_USES_PREBUILT_VENDOR_SEPOLICY), true)
+-ifeq ($(TARGET_HAS_FUSEBLK_SEPOLICY_ON_VENDOR),true)
+-BOARD_SEPOLICY_M4DEFS += board_excludes_fuseblk_sepolicy=true
+-endif
+-endif
+-
+ SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += \
+     device/miku/sepolicy/common/public
+ 
+@@ -31,5 +25,7 @@ BOARD_VENDOR_SEPOLICY_DIRS += \
+     device/miku/sepolicy/common/vendor
+ endif
+ 
+-# Selectively include legacy rules defined by the products
+--include device/miku/sepolicy/legacy-common/sepolicy.mk
++# Include atv rules on atv product
++ifeq ($(PRODUCT_IS_ATV), true)
++include device/miku/sepolicy/atv/sepolicy.mk
++endif

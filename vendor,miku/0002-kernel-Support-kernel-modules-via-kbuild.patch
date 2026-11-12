@@ -1,0 +1,50 @@
+From 4ed32f07b60774111dc5fc9b3e46d31c6e5eb44c Mon Sep 17 00:00:00 2001
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Wed, 20 Dec 2023 14:44:45 -0600
+Subject: [PATCH] kernel: Support kernel modules via kbuild
+
+TARGET_EXTERNAL_KERNEL_MODULES variable is used for the list of modules,
+same as the existing functionality, but is invoked if ':kbuild' is
+appended to a module name
+
+Existing external module build calls make in the module directory, which
+is a standalone module build. The module makefile may chain to kbuild,
+but that depends on the module. This addition invokes the kernel build
+system, passing the module directory via the M= param, which is the
+kernel standard for building out of tree modules.
+
+Change-Id: I38a582952f79f7155cdbf8a5975cf23074bbdab0
+---
+ build/tasks/kernel.mk | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/build/tasks/kernel.mk b/build/tasks/kernel.mk
+index 8730fc4..fb65684 100644
+--- a/build/tasks/kernel.mk
++++ b/build/tasks/kernel.mk
+@@ -287,6 +287,14 @@ define make-external-module-target
+ $(PATH_OVERRIDE) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) -C $(TARGET_KERNEL_EXT_MODULE_ROOT)/$(1) M=$(2)/$(1) KERNEL_SRC=$(BUILD_TOP)/$(KERNEL_SRC) OUT_DIR=$(KERNEL_BUILD_OUT_PREFIX)$(KERNEL_OUT) O=$(KERNEL_BUILD_OUT_PREFIX)$(KERNEL_OUT) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) $(KERNEL_CLANG_TRIPLE) $(KERNEL_CC) $(KERNEL_LD) $(3)
+ endef
+ 
++# Make an external module target using kbuild
++# $(1): module name
++# $(2): module root path relative to kernel source
++# $(3): target to build (eg. modules_install)
++define make-kbuild-module-target
++$(PATH_OVERRIDE) $(KERNEL_MAKE_CMD) $(KERNEL_MAKE_FLAGS) -C $(BUILD_TOP)/$(KERNEL_SRC) M=$(2)/$(1) O=$(KERNEL_BUILD_OUT_PREFIX)$(KERNEL_OUT) ARCH=$(KERNEL_ARCH) $(KERNEL_CROSS_COMPILE) $(KERNEL_CLANG_TRIPLE) $(KERNEL_CC) $(KERNEL_LD) $(3)
++endef
++
+ # Generate kernel .config from a given defconfig
+ # $(1): Output path (The value passed to O=)
+ # $(2): The defconfig to process (just the filename, no need for full path to file)
+@@ -469,8 +477,8 @@ $(TARGET_PREBUILT_INT_KERNEL): $(KERNEL_CONFIG) $(DEPMOD) $(DTC) $(KERNEL_MODULE
+ 				rpath=$$(python3 -c 'import os,sys;print(os.path.relpath(*(sys.argv[1:])))' $(TARGET_KERNEL_EXT_MODULE_ROOT) $(KERNEL_SRC)); \
+ 				$(foreach p, $(TARGET_KERNEL_EXT_MODULES),\
+ 					$$pwd; \
+-					$(call make-external-module-target,$(p),$$rpath,); \
+-					$(call make-external-module-target,$(p),$$rpath,INSTALL_MOD_PATH=$(MODULES_INTERMEDIATES) INSTALL_MOD_STRIP=1 KERNEL_UAPI_HEADERS_DIR=$(KERNEL_OUT) modules_install)); \
++					$(call $(if $(filter $(word 2,$(subst :, ,$(p))),kbuild),make-kbuild-module-target,make-external-module-target),$(word 1,$(subst :, ,$(p))),$$rpath,) || exit "$$?";  \
++					$(call $(if $(filter $(word 2,$(subst :, ,$(p))),kbuild),make-kbuild-module-target,make-external-module-target),$(word 1,$(subst :, ,$(p))),$$rpath,INSTALL_MOD_PATH=$(MODULES_INTERMEDIATES) INSTALL_MOD_STRIP=1 KERNEL_UAPI_HEADERS_DIR=$(KERNEL_OUT) modules_install)) || exit "$$?"; \
+ 			) \
+ 			kernel_release=$$(cat $(KERNEL_RELEASE)) \
+ 			kernel_modules_dir=$(MODULES_INTERMEDIATES)/lib/modules/$$kernel_release \

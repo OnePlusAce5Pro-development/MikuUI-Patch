@@ -1,0 +1,513 @@
+From 58118ce6b7999b5080ed18da8f5bc8dc257ed15e Mon Sep 17 00:00:00 2001
+From: Jyotiraditya Panda <jyotiraditya@aospa.co>
+Date: Thu, 22 Feb 2024 22:42:00 +0900
+Subject: [PATCH 07/10] Settings: deviceinfo: Extend Battery info page
+
+Change-Id: I5fcff258c878bd12d252321f269b89f3afa334ab
+Signed-off-by: Jyotiraditya Panda <jyotiraditya@aospa.co>
+Signed-off-by: Adithya R <gh0strider.2k18.reborn@gmail.com>
+---
+ res/xml/battery_info.xml                      | 42 ++++++++++++
+ ...eryDesignCapacityPreferenceController.java | 54 +++++++++++++++
+ .../BatteryHealthPreferenceController.java    | 65 +++++++++++++++++++
+ ...ryMaximumCapacityPreferenceController.java | 60 +++++++++++++++++
+ ...BatteryTechnologyPreferenceController.java | 50 ++++++++++++++
+ ...atteryTemperaturePreferenceController.java | 61 +++++++++++++++++
+ .../BatteryVoltagePreferenceController.java   | 60 +++++++++++++++++
+ .../BatteryHeaderPreferenceController.java    | 16 +++++
+ 8 files changed, 408 insertions(+)
+ create mode 100644 src/com/android/settings/deviceinfo/batteryinfo/BatteryDesignCapacityPreferenceController.java
+ create mode 100644 src/com/android/settings/deviceinfo/batteryinfo/BatteryHealthPreferenceController.java
+ create mode 100644 src/com/android/settings/deviceinfo/batteryinfo/BatteryMaximumCapacityPreferenceController.java
+ create mode 100644 src/com/android/settings/deviceinfo/batteryinfo/BatteryTechnologyPreferenceController.java
+ create mode 100644 src/com/android/settings/deviceinfo/batteryinfo/BatteryTemperaturePreferenceController.java
+ create mode 100644 src/com/android/settings/deviceinfo/batteryinfo/BatteryVoltagePreferenceController.java
+
+diff --git a/res/xml/battery_info.xml b/res/xml/battery_info.xml
+index e967eb7..8729e61 100644
+--- a/res/xml/battery_info.xml
++++ b/res/xml/battery_info.xml
+@@ -22,6 +22,48 @@
+     android:key="battery_info_screen"
+     settings:keywords="@string/keywords_battery_info">
+ 
++    <Preference
++        android:key="battery_info_technology"
++        android:title="@string/battery_technology"
++        android:summary="@string/summary_placeholder"
++        settings:controller="com.android.settings.deviceinfo.batteryinfo.BatteryTechnologyPreferenceController"
++        settings:enableCopying="true"/>
++
++    <Preference
++        android:key="battery_info_health"
++        android:title="@string/battery_health"
++        android:summary="@string/summary_placeholder"
++        settings:controller="com.android.settings.deviceinfo.batteryinfo.BatteryHealthPreferenceController"
++        settings:enableCopying="true"/>
++
++    <Preference
++        android:key="battery_info_temperature"
++        android:title="@string/battery_temperature"
++        android:summary="@string/summary_placeholder"
++        settings:controller="com.android.settings.deviceinfo.batteryinfo.BatteryTemperaturePreferenceController"
++        settings:enableCopying="true"/>
++
++    <Preference
++        android:key="battery_info_voltage"
++        android:title="@string/battery_voltage"
++        android:summary="@string/summary_placeholder"
++        settings:controller="com.android.settings.deviceinfo.batteryinfo.BatteryVoltagePreferenceController"
++        settings:enableCopying="true"/>
++
++    <Preference
++        android:key="battery_info_design_capacity"
++        android:title="@string/battery_design_capacity"
++        android:summary="@string/summary_placeholder"
++        settings:controller="com.android.settings.deviceinfo.batteryinfo.BatteryDesignCapacityPreferenceController"
++        settings:enableCopying="true"/>
++
++    <Preference
++        android:key="battery_info_maximum_capacity"
++        android:title="@string/battery_maximum_capacity"
++        android:summary="@string/summary_placeholder"
++        settings:controller="com.android.settings.deviceinfo.batteryinfo.BatteryMaximumCapacityPreferenceController"
++        settings:enableCopying="true"/>
++
+     <Preference
+         android:key="battery_info_manufacture_date"
+         android:title="@string/battery_manufacture_date"
+diff --git a/src/com/android/settings/deviceinfo/batteryinfo/BatteryDesignCapacityPreferenceController.java b/src/com/android/settings/deviceinfo/batteryinfo/BatteryDesignCapacityPreferenceController.java
+new file mode 100644
+index 0000000..f91433d
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/batteryinfo/BatteryDesignCapacityPreferenceController.java
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (C) 2024 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo.batteryinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.os.BatteryManager;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.fuelgauge.BatteryUtils;
++
++/**
++ * A controller that manages the information about battery design capacity.
++ */
++public class BatteryDesignCapacityPreferenceController extends BasePreferenceController {
++
++    public BatteryDesignCapacityPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return AVAILABLE;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        Intent batteryIntent = BatteryUtils.getBatteryIntent(mContext);
++        final int designCapacityUah =
++                batteryIntent.getIntExtra(BatteryManager.EXTRA_DESIGN_CAPACITY, -1);
++
++        if (designCapacityUah != -1) {
++            int designCapacity = designCapacityUah / 1_000;
++            return mContext.getString(R.string.battery_design_capacity_summary, designCapacity);
++        }
++
++        return mContext.getString(R.string.battery_design_capacity_not_available);
++    }
++}
+diff --git a/src/com/android/settings/deviceinfo/batteryinfo/BatteryHealthPreferenceController.java b/src/com/android/settings/deviceinfo/batteryinfo/BatteryHealthPreferenceController.java
+new file mode 100644
+index 0000000..71825f8
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/batteryinfo/BatteryHealthPreferenceController.java
+@@ -0,0 +1,65 @@
++/*
++ * Copyright (C) 2024 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo.batteryinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.os.BatteryManager;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.fuelgauge.BatteryUtils;
++
++/**
++ * A controller that manages the information about battery health.
++ */
++public class BatteryHealthPreferenceController extends BasePreferenceController {
++
++    public BatteryHealthPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return AVAILABLE;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        final Intent batteryIntent = BatteryUtils.getBatteryIntent(mContext);
++        final int health =
++                batteryIntent.getIntExtra(
++                        BatteryManager.EXTRA_HEALTH, BatteryManager.BATTERY_HEALTH_UNKNOWN);
++
++        switch (health) {
++            case BatteryManager.BATTERY_HEALTH_GOOD:
++                return mContext.getString(R.string.battery_health_good);
++            case BatteryManager.BATTERY_HEALTH_OVERHEAT:
++                return mContext.getString(R.string.battery_health_overheat);
++            case BatteryManager.BATTERY_HEALTH_DEAD:
++                return mContext.getString(R.string.battery_health_dead);
++            case BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE:
++                return mContext.getString(R.string.battery_health_over_voltage);
++            case BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE:
++                return mContext.getString(R.string.battery_health_unspecified_failure);
++            case BatteryManager.BATTERY_HEALTH_COLD:
++                return mContext.getString(R.string.battery_health_cold);
++            default:
++                return mContext.getString(R.string.battery_health_unknown);
++        }
++    }
++}
+diff --git a/src/com/android/settings/deviceinfo/batteryinfo/BatteryMaximumCapacityPreferenceController.java b/src/com/android/settings/deviceinfo/batteryinfo/BatteryMaximumCapacityPreferenceController.java
+new file mode 100644
+index 0000000..034e42f
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/batteryinfo/BatteryMaximumCapacityPreferenceController.java
+@@ -0,0 +1,60 @@
++/*
++ * Copyright (C) 2024 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo.batteryinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.os.BatteryManager;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.fuelgauge.BatteryUtils;
++
++/**
++ * A controller that manages the information about battery maximum capacity.
++ */
++public class BatteryMaximumCapacityPreferenceController extends BasePreferenceController {
++
++    public BatteryMaximumCapacityPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return AVAILABLE;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        Intent batteryIntent = BatteryUtils.getBatteryIntent(mContext);
++        final int maxCapacityUah =
++                batteryIntent.getIntExtra(BatteryManager.EXTRA_MAXIMUM_CAPACITY, -1);
++        final int designCapacityUah =
++                batteryIntent.getIntExtra(BatteryManager.EXTRA_DESIGN_CAPACITY, -1);
++
++        if (maxCapacityUah != -1 && designCapacityUah != -1) {
++            int maxCapacity = maxCapacityUah / 1_000;
++            int designCapacity = designCapacityUah / 1_000;
++            int percentage = (maxCapacity * 100) / designCapacity;
++
++            return mContext.getString(
++                    R.string.battery_maximum_capacity_summary, maxCapacity, percentage);
++        }
++
++        return mContext.getString(R.string.battery_maximum_capacity_not_available);
++    }
++}
+diff --git a/src/com/android/settings/deviceinfo/batteryinfo/BatteryTechnologyPreferenceController.java b/src/com/android/settings/deviceinfo/batteryinfo/BatteryTechnologyPreferenceController.java
+new file mode 100644
+index 0000000..d9c4251
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/batteryinfo/BatteryTechnologyPreferenceController.java
+@@ -0,0 +1,50 @@
++/*
++ * Copyright (C) 2024 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo.batteryinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.os.BatteryManager;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.fuelgauge.BatteryUtils;
++
++/**
++ * A controller that manages the information about battery technology.
++ */
++public class BatteryTechnologyPreferenceController extends BasePreferenceController {
++
++    public BatteryTechnologyPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return AVAILABLE;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        final Intent batteryIntent = BatteryUtils.getBatteryIntent(mContext);
++        final String technology = batteryIntent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY);
++
++        return technology != null
++                ? technology
++                : mContext.getText(R.string.battery_technology_not_available);
++    }
++}
+diff --git a/src/com/android/settings/deviceinfo/batteryinfo/BatteryTemperaturePreferenceController.java b/src/com/android/settings/deviceinfo/batteryinfo/BatteryTemperaturePreferenceController.java
+new file mode 100644
+index 0000000..07506f7
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/batteryinfo/BatteryTemperaturePreferenceController.java
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (C) 2024 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo.batteryinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.icu.text.MeasureFormat;
++import android.icu.util.Measure;
++import android.icu.util.MeasureUnit;
++import android.os.BatteryManager;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.fuelgauge.BatteryUtils;
++
++import java.util.Locale;
++
++/**
++ * A controller that manages the information about battery temperature.
++ */
++public class BatteryTemperaturePreferenceController extends BasePreferenceController {
++
++    public BatteryTemperaturePreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return AVAILABLE;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        final Intent batteryIntent = BatteryUtils.getBatteryIntent(mContext);
++        final int temperatureTenths =
++                batteryIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
++
++        if (temperatureTenths != -1) {
++            float temperature = temperatureTenths / 10f;
++
++            return MeasureFormat.getInstance(Locale.getDefault(), MeasureFormat.FormatWidth.SHORT)
++                    .format(new Measure(temperature, MeasureUnit.CELSIUS));
++        }
++
++        return mContext.getText(R.string.battery_temperature_not_available);
++    }
++}
+diff --git a/src/com/android/settings/deviceinfo/batteryinfo/BatteryVoltagePreferenceController.java b/src/com/android/settings/deviceinfo/batteryinfo/BatteryVoltagePreferenceController.java
+new file mode 100644
+index 0000000..2ceae42
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/batteryinfo/BatteryVoltagePreferenceController.java
+@@ -0,0 +1,60 @@
++/*
++ * Copyright (C) 2024 Paranoid Android
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.deviceinfo.batteryinfo;
++
++import android.content.Context;
++import android.content.Intent;
++import android.icu.text.MeasureFormat;
++import android.icu.util.Measure;
++import android.icu.util.MeasureUnit;
++import android.os.BatteryManager;
++
++import com.android.settings.R;
++import com.android.settings.core.BasePreferenceController;
++import com.android.settingslib.fuelgauge.BatteryUtils;
++
++import java.util.Locale;
++
++/**
++ * A controller that manages the information about battery voltage.
++ */
++public class BatteryVoltagePreferenceController extends BasePreferenceController {
++
++    public BatteryVoltagePreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return AVAILABLE;
++    }
++
++    @Override
++    public CharSequence getSummary() {
++        final Intent batteryIntent = BatteryUtils.getBatteryIntent(mContext);
++        final int voltageMillivolts = batteryIntent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
++
++        if (voltageMillivolts != -1) {
++            float voltage = voltageMillivolts / 1_000f;
++
++            return MeasureFormat.getInstance(Locale.getDefault(), MeasureFormat.FormatWidth.SHORT)
++                    .format(new Measure(voltage, MeasureUnit.VOLT));
++        }
++
++        return mContext.getText(R.string.battery_voltage_not_available);
++    }
++}
+diff --git a/src/com/android/settings/fuelgauge/BatteryHeaderPreferenceController.java b/src/com/android/settings/fuelgauge/BatteryHeaderPreferenceController.java
+index adcd7d1..01a81df 100644
+--- a/src/com/android/settings/fuelgauge/BatteryHeaderPreferenceController.java
++++ b/src/com/android/settings/fuelgauge/BatteryHeaderPreferenceController.java
+@@ -20,6 +20,7 @@ import static com.android.settings.fuelgauge.BatteryBroadcastReceiver.BatteryUpd
+ 
+ import android.content.Context;
+ import android.content.Intent;
++import android.os.BatteryManager;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
+@@ -31,6 +32,7 @@ import androidx.preference.PreferenceScreen;
+ 
+ import com.android.settings.core.BasePreferenceController;
+ import com.android.settings.core.PreferenceControllerMixin;
++import com.android.settings.R;
+ import com.android.settingslib.Utils;
+ import com.android.settingslib.widget.UsageProgressBarPreference;
+ 
+@@ -104,14 +106,28 @@ public class BatteryHeaderPreferenceController extends BasePreferenceController
+         Intent batteryBroadcast =
+                 com.android.settingslib.fuelgauge.BatteryUtils.getBatteryIntent(mContext);
+         final int batteryLevel = Utils.getBatteryLevel(batteryBroadcast);
++        final boolean discharging =
++                batteryBroadcast.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) == 0;
++        final int chargeCounterUah =
++                batteryBroadcast.getIntExtra(BatteryManager.EXTRA_CHARGE_COUNTER, -1);
+ 
+         mBatteryUsageProgressBarPreference.setUsageSummary(
+                 formatBatteryPercentageText(batteryLevel));
+         mBatteryUsageProgressBarPreference.setPercent(batteryLevel, BATTERY_MAX_LEVEL);
++
++        if (chargeCounterUah != -1) {
++            int chargeCounter = chargeCounterUah / 1_000;
++            mBatteryUsageProgressBarPreference.setTotalSummary(
++                    formatBatteryChargeCounterText(chargeCounter));
++        }
+     }
+ 
+     private CharSequence formatBatteryPercentageText(int batteryLevel) {
+         return com.android.settings.Utils.formatPercentage(batteryLevel);
+     }
++
++    private CharSequence formatBatteryChargeCounterText(int chargeCounter) {
++        return mContext.getString(R.string.battery_charge_counter_summary, chargeCounter);
++    }
+ }
+ // LINT.ThenChange(BatteryHeaderPreference.kt)

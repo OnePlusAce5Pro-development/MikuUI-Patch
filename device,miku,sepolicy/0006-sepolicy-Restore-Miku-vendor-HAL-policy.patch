@@ -1,0 +1,324 @@
+From 86246624223854e4f168d70cc7190f43b3cd6330 Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Sat, 3 Oct 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore Miku vendor HAL policy
+
+Restore vendor file contexts and rules for camera, touch, health,
+LiveDisplay, PowerShare, IR, NFC, radio and USB HALs.
+
+Change-Id: I02a3fee949411f6a43ef3736c975823fbc7188df
+---
+ common/vendor/device.te                       |  1 +
+ common/vendor/file_contexts                   | 38 +++++++++++++++----
+ common/vendor/flags_health_check.te           |  2 +
+ common/vendor/fsck.te                         |  1 +
+ common/vendor/hal_camera_default.te           |  2 +
+ common/vendor/hal_ir_default.te               |  3 ++
+ common/vendor/hal_lineage_health_default.te   |  7 ++++
+ .../vendor/hal_lineage_livedisplay_sysfs.te   | 10 +++++
+ .../vendor/hal_lineage_powershare_default.te  |  7 ++++
+ common/vendor/hal_lineage_touch_default.te    |  2 +
+ common/vendor/hal_nfc_default.te              |  1 +
+ common/vendor/hal_radio_config_default.te     |  1 +
+ common/vendor/hal_radio_default.te            |  1 +
+ common/vendor/hal_usb_default.te              |  7 ++++
+ common/vendor/hwservice.te                    |  3 ++
+ common/vendor/hwservice_contexts              |  3 ++
+ common/vendor/init.te                         |  7 ++++
+ common/vendor/rild.te                         |  2 +
+ common/vendor/secure_element.te               |  2 +
+ common/vendor/system_app.te                   |  2 +
+ common/vendor/system_server.te                |  2 +
+ common/vendor/vdc.te                          |  1 +
+ common/vendor/vendor_init.te                  | 14 +++++++
+ 23 files changed, 112 insertions(+), 7 deletions(-)
+ create mode 100644 common/vendor/device.te
+ create mode 100644 common/vendor/flags_health_check.te
+ create mode 100644 common/vendor/fsck.te
+ create mode 100644 common/vendor/hal_ir_default.te
+ create mode 100644 common/vendor/hal_lineage_health_default.te
+ create mode 100644 common/vendor/hal_lineage_livedisplay_sysfs.te
+ create mode 100644 common/vendor/hal_lineage_powershare_default.te
+ create mode 100644 common/vendor/hal_nfc_default.te
+ create mode 100644 common/vendor/hal_radio_config_default.te
+ create mode 100644 common/vendor/hal_radio_default.te
+ create mode 100644 common/vendor/hal_usb_default.te
+ create mode 100644 common/vendor/hwservice.te
+ create mode 100644 common/vendor/hwservice_contexts
+ create mode 100644 common/vendor/init.te
+ create mode 100644 common/vendor/rild.te
+ create mode 100644 common/vendor/secure_element.te
+ create mode 100644 common/vendor/system_app.te
+ create mode 100644 common/vendor/system_server.te
+ create mode 100644 common/vendor/vdc.te
+ create mode 100644 common/vendor/vendor_init.te
+
+diff --git a/common/vendor/device.te b/common/vendor/device.te
+new file mode 100644
+index 0000000..d580073
+--- /dev/null
++++ b/common/vendor/device.te
+@@ -0,0 +1 @@
++type lirc_device, dev_type;
+diff --git a/common/vendor/file_contexts b/common/vendor/file_contexts
+index 0c45a93..96c1150 100644
+--- a/common/vendor/file_contexts
++++ b/common/vendor/file_contexts
+@@ -1,18 +1,42 @@
++# Camera HAL
++/(vendor|system/vendor)/bin/hw/android\.hardware\.camera\.provider-service(_32)?\.lineage u:object_r:hal_camera_default_exec:s0
++
+ # Fingerprint HAL
+ /(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.fingerprint@2\.0-service u:object_r:hal_fingerprint_default_exec:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.fingerprint-service\.lineage u:object_r:hal_fingerprint_default_exec:s0
++
++# Health HAL
++/(vendor|system/vendor)/bin/hw/android\.hardware\.health-service\.batteryless u:object_r:hal_health_default_exec:s0
++/(vendor|system/vendor)/bin/hw/vendor\.lineage\.health-service\.default u:object_r:hal_lineage_health_default_exec:s0
+ 
+-# GNSS HAL
+-/(vendor|system/vendor)/bin/hw/android\.hardware\.gnss@1\.0-service\.legacy u:object_r:hal_gnss_default_exec:s0
++# IR HAL
++/dev/lirc0                                                            u:object_r:lirc_device:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.ir-service\.lineage u:object_r:hal_ir_default_exec:s0
+ 
+ # Light HAL
+-/(vendor|system/vendor)/bin/hw/android\.hardware\.light@2\.0-service\.aw2013 u:object_r:hal_light_default_exec:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.light-service\.lineage u:object_r:hal_light_default_exec:s0
++
++# LiveDisplay HAL
++/(vendor|system/vendor)/bin/hw/vendor\.lineage\.livedisplay-service.sysfs u:object_r:hal_lineage_livedisplay_sysfs_exec:s0
++
++# Power HAL
++/(vendor|system/vendor)/bin/hw/android\.hardware\.power-service\.lineage-libperfmgr u:object_r:hal_power_default_exec:s0
++
++# PowerShare HAL
++/(vendor|system/vendor)/bin/hw/vendor\.lineage\.powershare-service\.default u:object_r:hal_lineage_powershare_default_exec:s0
++
++# Radio HAL
++/(vendor|system/vendor)/bin/hw/android\.hardware\.radio@1\.4-service\.legacy u:object_r:hal_radio_default_exec:s0
++
++# RadioConfig HAL
++/(vendor|system/vendor)/bin/hw/android\.hardware\.radio\.config@1\.1-service\.wrapper u:object_r:hal_radio_config_default_exec:s0
+ 
+ # USB HAL
+ /(vendor|system/vendor)/bin/hw/android\.hardware\.usb-service\.basic u:object_r:hal_usb_default_exec:s0
+-/(vendor|system/vendor)/bin/hw/android\.hardware\.usb@1\.0-service\.basic u:object_r:hal_usb_default_exec:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.usb@1\.3-service\.basic u:object_r:hal_usb_default_exec:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.usb@1\.1-service\.typec u:object_r:hal_usb_default_exec:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.usb@1\.3-service\.dual_role_usb u:object_r:hal_usb_default_exec:s0
+ 
+ # Vibrator HAL
+ /(vendor|system/vendor)/bin/hw/android\.hardware\.vibrator@1\.0-service\.lineage u:object_r:hal_vibrator_default_exec:s0
+-
+-# Wi-Fi HAL
+-/(vendor|system/vendor)/bin/hw/android\.hardware\.wifi@1\.0-service\.legacy u:object_r:hal_wifi_default_exec:s0
++/(vendor|system/vendor)/bin/hw/android\.hardware\.vibrator-service\.legacy       u:object_r:hal_vibrator_default_exec:s0
+diff --git a/common/vendor/flags_health_check.te b/common/vendor/flags_health_check.te
+new file mode 100644
+index 0000000..c7bcea0
+--- /dev/null
++++ b/common/vendor/flags_health_check.te
+@@ -0,0 +1,2 @@
++# Please shut up.
++dontaudit flags_health_check property_type:file { getattr open read map };
+diff --git a/common/vendor/fsck.te b/common/vendor/fsck.te
+new file mode 100644
+index 0000000..9990eda
+--- /dev/null
++++ b/common/vendor/fsck.te
+@@ -0,0 +1 @@
++dontaudit fsck self:capability kill;
+diff --git a/common/vendor/hal_camera_default.te b/common/vendor/hal_camera_default.te
+index c3c6e51..a44744b 100644
+--- a/common/vendor/hal_camera_default.te
++++ b/common/vendor/hal_camera_default.te
+@@ -1 +1,3 @@
+ get_prop(hal_camera_default, camera2_extensions_prop)
++set_prop(hal_camera_default, vendor_camera_remapid_prop)
++get_prop(hal_camera_default, vendor_camera_skip_failed_ids_prop)
+diff --git a/common/vendor/hal_ir_default.te b/common/vendor/hal_ir_default.te
+new file mode 100644
+index 0000000..bf3f8e6
+--- /dev/null
++++ b/common/vendor/hal_ir_default.te
+@@ -0,0 +1,3 @@
++allow hal_ir_default lirc_device:chr_file rw_file_perms;
++
++get_prop(hal_ir_default, vendor_ir_prop)
+diff --git a/common/vendor/hal_lineage_health_default.te b/common/vendor/hal_lineage_health_default.te
+new file mode 100644
+index 0000000..d3b7c16
+--- /dev/null
++++ b/common/vendor/hal_lineage_health_default.te
+@@ -0,0 +1,7 @@
++type hal_lineage_health_default, domain;
++hal_server_domain(hal_lineage_health_default, hal_lineage_health)
++
++type hal_lineage_health_default_exec, exec_type, vendor_file_type, file_type;
++init_daemon_domain(hal_lineage_health_default)
++
++binder_call(hal_lineage_health_default, servicemanager)
+diff --git a/common/vendor/hal_lineage_livedisplay_sysfs.te b/common/vendor/hal_lineage_livedisplay_sysfs.te
+new file mode 100644
+index 0000000..98ef45e
+--- /dev/null
++++ b/common/vendor/hal_lineage_livedisplay_sysfs.te
+@@ -0,0 +1,10 @@
++type hal_lineage_livedisplay_sysfs, domain;
++hal_server_domain(hal_lineage_livedisplay_sysfs, hal_lineage_livedisplay)
++
++type hal_lineage_livedisplay_sysfs_exec, exec_type, vendor_file_type, file_type;
++init_daemon_domain(hal_lineage_livedisplay_sysfs)
++
++binder_call(hal_lineage_livedisplay_sysfs, servicemanager)
++
++# Grant access over LiveDisplay tuneables
++allow hal_lineage_livedisplay_sysfs sysfs_livedisplay_tuneable:file rw_file_perms;
+diff --git a/common/vendor/hal_lineage_powershare_default.te b/common/vendor/hal_lineage_powershare_default.te
+new file mode 100644
+index 0000000..bcf0d5f
+--- /dev/null
++++ b/common/vendor/hal_lineage_powershare_default.te
+@@ -0,0 +1,7 @@
++type hal_lineage_powershare_default, domain;
++hal_server_domain(hal_lineage_powershare_default, hal_lineage_powershare)
++
++type hal_lineage_powershare_default_exec, exec_type, vendor_file_type, file_type;
++init_daemon_domain(hal_lineage_powershare_default)
++
++binder_call(hal_lineage_powershare_default, servicemanager)
+diff --git a/common/vendor/hal_lineage_touch_default.te b/common/vendor/hal_lineage_touch_default.te
+index dc68b98..c5d9a89 100644
+--- a/common/vendor/hal_lineage_touch_default.te
++++ b/common/vendor/hal_lineage_touch_default.te
+@@ -3,3 +3,5 @@ hal_server_domain(hal_lineage_touch_default, hal_lineage_touch)
+ 
+ type hal_lineage_touch_default_exec, exec_type, vendor_file_type, file_type;
+ init_daemon_domain(hal_lineage_touch_default)
++
++binder_call(hal_lineage_touch_default, servicemanager)
+diff --git a/common/vendor/hal_nfc_default.te b/common/vendor/hal_nfc_default.te
+new file mode 100644
+index 0000000..01d858c
+--- /dev/null
++++ b/common/vendor/hal_nfc_default.te
+@@ -0,0 +1 @@
++set_prop(hal_nfc_default, vendor_persist_nfc_prop)
+diff --git a/common/vendor/hal_radio_config_default.te b/common/vendor/hal_radio_config_default.te
+new file mode 100644
+index 0000000..dc9f8f9
+--- /dev/null
++++ b/common/vendor/hal_radio_config_default.te
+@@ -0,0 +1 @@
++allow hal_radio_config_default hal_lineage_backend_radio_config_hwservice:hwservice_manager find;
+diff --git a/common/vendor/hal_radio_default.te b/common/vendor/hal_radio_default.te
+new file mode 100644
+index 0000000..e2320be
+--- /dev/null
++++ b/common/vendor/hal_radio_default.te
+@@ -0,0 +1 @@
++allow hal_radio_default hal_lineage_backend_radio_hwservice:hwservice_manager find;
+diff --git a/common/vendor/hal_usb_default.te b/common/vendor/hal_usb_default.te
+new file mode 100644
+index 0000000..798f4b9
+--- /dev/null
++++ b/common/vendor/hal_usb_default.te
+@@ -0,0 +1,7 @@
++allow hal_usb_default configfs:dir create_dir_perms;
++allow hal_usb_default configfs:file create_file_perms;
++
++allow hal_usb_default proc_deny_new_usb:file w_file_perms;
++allow hal_usb_default sysfs_usb_data_enabled:file w_file_perms;
++
++allow hal_usb_default self:capability sys_admin;
+diff --git a/common/vendor/hwservice.te b/common/vendor/hwservice.te
+new file mode 100644
+index 0000000..9d4693b
+--- /dev/null
++++ b/common/vendor/hwservice.te
+@@ -0,0 +1,3 @@
++type hal_lineage_backend_radio_hwservice, hwservice_manager_type;
++
++type hal_lineage_backend_radio_config_hwservice, hwservice_manager_type;
+diff --git a/common/vendor/hwservice_contexts b/common/vendor/hwservice_contexts
+new file mode 100644
+index 0000000..c0d4bf6
+--- /dev/null
++++ b/common/vendor/hwservice_contexts
+@@ -0,0 +1,3 @@
++# The following hwservices are supposed to be registered by blobs through hexedit; Keep string length the same.
++lineage.hardware.radio::IRadio                                          u:object_r:hal_lineage_backend_radio_hwservice:s0
++lineage.hardware.radio.config::IRadioConfig                             u:object_r:hal_lineage_backend_radio_config_hwservice:s0
+diff --git a/common/vendor/init.te b/common/vendor/init.te
+new file mode 100644
+index 0000000..a90ab00
+--- /dev/null
++++ b/common/vendor/init.te
+@@ -0,0 +1,7 @@
++recovery_only(`
++  allow init self:capability sys_module;
++  allow init rootfs:system module_load;
++  allow init proc_firmware_config:file w_file_perms;
++')
++
++dontaudit init debugfs_tracing_debug:dir mounton;
+diff --git a/common/vendor/rild.te b/common/vendor/rild.te
+new file mode 100644
+index 0000000..cc177f2
+--- /dev/null
++++ b/common/vendor/rild.te
+@@ -0,0 +1,2 @@
++add_hwservice(rild, hal_lineage_backend_radio_hwservice)
++add_hwservice(rild, hal_lineage_backend_radio_config_hwservice)
+diff --git a/common/vendor/secure_element.te b/common/vendor/secure_element.te
+new file mode 100644
+index 0000000..4639da8
+--- /dev/null
++++ b/common/vendor/secure_element.te
+@@ -0,0 +1,2 @@
++dontaudit secure_element system_data_file:dir create_dir_perms;
++dontaudit secure_element system_data_file:file create_file_perms;
+diff --git a/common/vendor/system_app.te b/common/vendor/system_app.te
+new file mode 100644
+index 0000000..a669749
+--- /dev/null
++++ b/common/vendor/system_app.te
+@@ -0,0 +1,2 @@
++# FM Radio app
++get_prop(system_app, vendor_fm_radio_app_prop)
+diff --git a/common/vendor/system_server.te b/common/vendor/system_server.te
+new file mode 100644
+index 0000000..8b853c7
+--- /dev/null
++++ b/common/vendor/system_server.te
+@@ -0,0 +1,2 @@
++# Trust
++get_prop(system_server, vendor_security_patch_level_prop)
+diff --git a/common/vendor/vdc.te b/common/vendor/vdc.te
+new file mode 100644
+index 0000000..9123f99
+--- /dev/null
++++ b/common/vendor/vdc.te
+@@ -0,0 +1 @@
++dontaudit vdc self:capability kill;
+diff --git a/common/vendor/vendor_init.te b/common/vendor/vendor_init.te
+new file mode 100644
+index 0000000..aa0f183
+--- /dev/null
++++ b/common/vendor/vendor_init.te
+@@ -0,0 +1,14 @@
++# FM Radio app properties
++set_prop(vendor_init, vendor_fm_radio_app_prop)
++
++# NFC
++set_prop(vendor_init, vendor_persist_nfc_prop)
++
++# To write to VM nodes
++allow vendor_init proc_dirty:file w_file_perms;
++
++# Camera IDs remapping
++set_prop(vendor_init, vendor_camera_remapid_prop)
++
++# Camera skip failed IDs
++set_prop(vendor_init, vendor_camera_skip_failed_ids_prop)

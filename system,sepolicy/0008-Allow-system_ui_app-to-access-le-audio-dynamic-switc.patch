@@ -1,0 +1,28 @@
+From c19f9cb812be25f1c50283daed463f73e9d11c0b Mon Sep 17 00:00:00 2001
+From: silens <silens@google.com>
+Date: Thu, 27 Mar 2025 00:40:27 +0000
+Subject: [PATCH] Allow system_ui_app to access le audio dynamic switcher
+ mode system property
+
+Bug: 397105257
+Test: m .
+Flag: EXEMPT modify the system property access.
+Change-Id: I7df35bc283b5ed5297da048723a782491f1e41e4
+---
+ private/platform_app_all.te | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/private/platform_app_all.te b/private/platform_app_all.te
+index 115e0df..fb9ba3e 100644
+--- a/private/platform_app_all.te
++++ b/private/platform_app_all.te
+@@ -122,6 +122,9 @@ get_prop(platform_app_all, qemu_hw_prop)
+ # allow platform apps to read sys.boot.reason.last
+ get_prop(platform_app_all, last_boot_reason_prop)
+ 
++# allow systemui access to bluetooth_lea_mode_prop
++get_prop(platform_app, bluetooth_lea_mode_prop)
++
+ # allow platform apps to create symbolic link
+ allow platform_app_all app_data_file:lnk_file create_file_perms;
+ 

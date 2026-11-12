@@ -1,0 +1,39 @@
+From 6a4b85a8f98f411e5e7649c5fa00a1f48a8dbc4e Mon Sep 17 00:00:00 2001
+From: awa <2172245494@qq.com>
+Date: Fri, 13 Nov 2026 00:37:43 +0800
+Subject: [PATCH 10/10] Settings: Add zh-CN translations from LineageOS
+ Settings
+
+Extracted from LineageOS/android_packages_apps_Settings lineage-24.0
+res/values-zh-rCN.
+
+No self-authored translations.
+
+Change-Id: I76baa85a28892e7d9509a4654c28e76af3cdb2f4
+---
+ res/values-zh-rCN/miku_lineage_strings.xml | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/res/values-zh-rCN/miku_lineage_strings.xml b/res/values-zh-rCN/miku_lineage_strings.xml
+index 69983ab..54fc549 100644
+--- a/res/values-zh-rCN/miku_lineage_strings.xml
++++ b/res/values-zh-rCN/miku_lineage_strings.xml
+@@ -19,4 +19,18 @@
+     <string name="picture_adjustment_summary">调整色相、饱和度、亮度和对比度</string>
+     <string name="picture_adjustment_title">图片调整</string>
+     <string name="live_display_summary">基于当前时间和环境条件来优化您的屏幕以改善可读性和减少视疲劳</string>
++    <string name="battery_design_capacity">设计容量</string>
++    <string name="battery_health">健康</string>
++    <string name="battery_maximum_capacity">最大容量</string>
++    <string name="battery_technology">技术</string>
++    <string name="battery_temperature">温度</string>
++    <string name="battery_voltage">电压</string>
++    <string name="high_touch_polling_rate_summary">提高触摸屏采样率</string>
++    <string name="high_touch_polling_rate_title">高触控采样率</string>
++    <string name="high_touch_sensitivity_summary">增加触摸屏的灵敏度，以便在戴手套时使用</string>
++    <string name="high_touch_sensitivity_title">触摸屏高灵敏度</string>
++    <string name="touchscreen_hovering_summary">允许您将手指悬停在屏幕上作为浏览器、远程桌面等处的鼠标指针</string>
++    <string name="touchscreen_hovering_title">悬空操作</string>
++    <string name="wake_when_plugged_or_unplugged_summary">连接或断开电源时点亮屏幕</string>
++    <string name="wake_when_plugged_or_unplugged_title">连接或移除电源时唤醒</string>
+ </resources>

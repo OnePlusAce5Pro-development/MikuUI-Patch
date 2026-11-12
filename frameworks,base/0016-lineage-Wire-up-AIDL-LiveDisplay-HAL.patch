@@ -1,0 +1,100 @@
+From 35c4e3b9ae958d6180075794e7c7219c9478c72f Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Thu, 14 Aug 2025 23:44:11 +0200
+Subject: [PATCH 07/14] lineage: Wire up AIDL LiveDisplay HAL
+
+Change-Id: Ibfd8bf0ebba4171fd6ed619894ca6c0b75a0e50f
+---
+ Android.bp                                    |  3 +
+ .../internal/lineage/hardware/AIDLHelper.java | 68 +++++++++++++++++++
+ 2 files changed, 71 insertions(+)
+ create mode 100644 core/java/com/android/internal/lineage/hardware/AIDLHelper.java
+
+diff --git a/Android.bp b/Android.bp
+index a6f637645..62661ffbf 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -254,6 +254,9 @@ java_library {
+ 
+         "com.android.sysprop.localization",
+         "PlatformProperties",
++        "vendor.lineage.livedisplay-V1-java",
++        "vendor.lineage.health-V2-java",
++        "vendor.lineage.touch-V1-java",
+     ],
+     sdk_version: "core_platform",
+     installable: false,
+diff --git a/core/java/com/android/internal/lineage/hardware/AIDLHelper.java b/core/java/com/android/internal/lineage/hardware/AIDLHelper.java
+new file mode 100644
+index 000000000..9fa7471bb
+--- /dev/null
++++ b/core/java/com/android/internal/lineage/hardware/AIDLHelper.java
+@@ -0,0 +1,68 @@
++/*
++ * SPDX-FileCopyrightText: 2025 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.internal.lineage.hardware;
++
++import android.util.Range;
++
++import java.util.ArrayList;
++
++class AIDLHelper {
++    static DisplayMode[] fromAIDLModes(vendor.lineage.livedisplay.DisplayMode[] modes) {
++        int size = modes.length;
++        DisplayMode[] r = new DisplayMode[size];
++        for (int i = 0; i < size; i++) {
++            vendor.lineage.livedisplay.DisplayMode m = modes[i];
++            r[i] = new DisplayMode(m.id, m.name);
++        }
++        return r;
++    }
++
++    static DisplayMode fromAIDLMode(vendor.lineage.livedisplay.DisplayMode mode) {
++        return new DisplayMode(mode.id, mode.name);
++    }
++
++    static HSIC fromAIDLHSIC(vendor.lineage.livedisplay.HSIC hsic) {
++        return new HSIC(hsic.hue, hsic.saturation, hsic.intensity,
++                hsic.contrast, hsic.saturationThreshold);
++    }
++
++    static vendor.lineage.livedisplay.HSIC toAIDLHSIC(HSIC hsic) {
++        vendor.lineage.livedisplay.HSIC h = new vendor.lineage.livedisplay.HSIC();
++        h.hue = hsic.getHue();
++        h.saturation = hsic.getSaturation();
++        h.intensity = hsic.getIntensity();
++        h.contrast = hsic.getContrast();
++        h.saturationThreshold = hsic.getSaturationThreshold();
++        return h;
++    }
++
++    static Range<Integer> fromAIDLRange(vendor.lineage.livedisplay.Range range) {
++        return new Range(range.min, range.max);
++    }
++
++    static Range<Float> fromAIDLRange(vendor.lineage.livedisplay.FloatRange range) {
++        return new Range(range.min, range.max);
++    }
++
++    static TouchscreenGesture[] fromAIDLGestures(
++            vendor.lineage.touch.Gesture[] gestures) {
++        int size = gestures.length;
++        TouchscreenGesture[] r = new TouchscreenGesture[size];
++        for (int i = 0; i < size; i++) {
++            vendor.lineage.touch.Gesture g = gestures[i];
++            r[i] = new TouchscreenGesture(g.id, g.name, g.keycode);
++        }
++        return r;
++    }
++
++    static vendor.lineage.touch.Gesture toAIDLGesture(TouchscreenGesture gesture) {
++        vendor.lineage.touch.Gesture g = new vendor.lineage.touch.Gesture();
++        g.id = gesture.id;
++        g.name = gesture.name;
++        g.keycode = gesture.keycode;
++        return g;
++    }
++}

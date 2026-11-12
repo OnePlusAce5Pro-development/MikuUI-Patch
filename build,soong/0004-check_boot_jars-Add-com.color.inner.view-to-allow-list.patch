@@ -1,0 +1,24 @@
+From fa7fdbe3ead6376cbefeeba8e43785b1e718bc14 Mon Sep 17 00:00:00 2001
+From: inferno0230 <mail@inferno0230.in>
+Date: Mon, 2 Nov 2026 12:11:15 +0530
+Subject: [PATCH 3/3] check_boot_jars: Add com.color.inner.view to allow list
+
+Needed by OPlus gallery
+
+Change-Id: Ifab1731b48ceb231ada33e84d027d505383fbcf2
+---
+ scripts/check_boot_jars/package_allowed_list.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/scripts/check_boot_jars/package_allowed_list.txt b/scripts/check_boot_jars/package_allowed_list.txt
+index 55aa428..ad383cb 100644
+--- a/scripts/check_boot_jars/package_allowed_list.txt
++++ b/scripts/check_boot_jars/package_allowed_list.txt
+@@ -208,6 +208,7 @@ com\.nvidia
+ com\.nvidia\..*
+ 
+ # OPLUS adds
++com\.color\.inner\.view
+ com\.oplus\..*
+ net\.oneplus\..*
+ oplus\..*

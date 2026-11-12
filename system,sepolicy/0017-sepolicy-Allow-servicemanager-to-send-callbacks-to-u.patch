@@ -1,0 +1,26 @@
+From 31756a5ee2c3b1a49d8e37edb5a162fb791e5023 Mon Sep 17 00:00:00 2001
+From: Alexander Koskovich <akoskovich@pm.me>
+Date: Tue, 6 Oct 2026 14:48:50 -0400
+Subject: [PATCH] sepolicy: Allow servicemanager to send callbacks to
+ usbd
+
+usbd gets the USB gadget HAL with waitForService(), which relies on a
+callback from servicemanager. Without binder_use() that is denied and
+usbd polls instead, adding up to 1s before it configures USB at boot.
+
+Test: Boot, usbd takes 0.165s instead of 1.087s
+Change-Id: I72ee3a802dd71134807405a5fc59dacf9a9a5b44
+---
+ private/usbd.te | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/private/usbd.te b/private/usbd.te
+index c9121a5..6e91333 100644
+--- a/private/usbd.te
++++ b/private/usbd.te
+@@ -17,4 +17,4 @@ set_prop(usbd, ctl_default_prop)
+ # Start/stop adbd via ctl.start adbd
+ set_prop(usbd, ctl_adbd_prop)
+ 
+-binder_call(usbd, servicemanager)
++binder_use(usbd)

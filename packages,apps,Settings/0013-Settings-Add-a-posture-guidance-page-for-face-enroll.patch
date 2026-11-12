@@ -1,0 +1,352 @@
+From 30d3bdd6b382a6cf0a43c9e1c957179830b382ff Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Tue, 13 Oct 2026 03:34:17 +0300
+Subject: [PATCH] Settings: Add a posture guidance page for face
+ enrollment
+
+Devices can require a specific posture for face enrollment by setting
+config_face_enroll_guidance_page to a guidance activity and
+config_face_enroll_supported_posture to the allowed posture.
+
+AOSP only ships the plumbing and expects the page to be provided by the
+OEM. Add FaceEnrollFoldPage, which asks the user to fold the phone and
+finishes once the device reaches the configured posture, like the stock
+Pixel OS does.
+
+Test: enroll face on Pixel Fold
+Assisted-by: LLM
+Change-Id: I611dcaffa1a4db67c30108696f2e536920a6fe3b
+---
+ AndroidManifest.xml                           |   6 +
+ res/layout/face_enroll_fold_page.xml          |  59 +++++
+ res/values/dimens.xml                         |   1 +
+ res/values/miku_strings.xml                   |   5 +
+ .../biometrics/face/FaceEnrollFoldPage.java   | 210 ++++++++++++++++++
+ 5 files changed, 281 insertions(+)
+ create mode 100644 res/layout/face_enroll_fold_page.xml
+ create mode 100644 src/com/android/settings/biometrics/face/FaceEnrollFoldPage.java
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 81f6ebd..e3c9573 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -3146,6 +3146,12 @@
+             android:theme="@style/GlifV4Theme.DayNight"
+             android:screenOrientation="portrait"/>
+ 
++        <activity android:name=".biometrics.face.FaceEnrollFoldPage"
++            android:exported="false"
++            android:theme="@style/GlifV4Theme.DayNight"
++            android:configChanges="density|keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize"
++            android:screenOrientation="nosensor"/>
++
+         <activity android:name=".biometrics.BiometricHandoffActivity"
+                   android:exported="false"/>
+ 
+diff --git a/res/layout/face_enroll_fold_page.xml b/res/layout/face_enroll_fold_page.xml
+new file mode 100644
+index 0000000..afaba83
+--- /dev/null
++++ b/res/layout/face_enroll_fold_page.xml
+@@ -0,0 +1,59 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ~ Copyright (C) 2026 The LineageOS Project
++  ~
++  ~ Licensed under the Apache License, Version 2.0 (the "License");
++  ~ you may not use this file except in compliance with the License.
++  ~ You may obtain a copy of the License at
++  ~
++  ~      http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing, software
++  ~ distributed under the License is distributed on an "AS IS" BASIS,
++  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  ~ See the License for the specific language governing permissions and
++  ~ limitations under the License
++  -->
++
++<com.google.android.setupdesign.GlifLayout
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto"
++    style="?attr/face_layout_theme"
++    android:id="@+id/setup_wizard_layout"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent">
++
++    <LinearLayout
++        style="@style/SudContentFrame"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:clipChildren="false"
++        android:clipToPadding="false"
++        android:orientation="vertical">
++
++        <RelativeLayout
++            android:layout_width="match_parent"
++            android:layout_height="0dp"
++            android:layout_weight="1"
++            android:gravity="center"
++            android:orientation="vertical">
++
++            <!-- Animation res MUST be set in code and is expected to be provided by an overlay. -->
++            <com.airbnb.lottie.LottieAnimationView
++                android:id="@+id/illustration_lottie"
++                android:layout_width="@dimen/face_enroll_posture_guidance_size"
++                android:layout_height="@dimen/face_enroll_posture_guidance_size"
++                android:clipChildren="false"
++                android:clipToPadding="false"
++                android:contentDescription="@string/settingslib_illustration_content_description"
++                android:scaleType="centerInside"
++                android:visibility="gone"
++                app:lottie_autoPlay="true"
++                app:lottie_loop="true"
++                app:lottie_speed="0.85" />
++
++        </RelativeLayout>
++
++    </LinearLayout>
++
++</com.google.android.setupdesign.GlifLayout>
+diff --git a/res/values/dimens.xml b/res/values/dimens.xml
+index 2ae2be8..a569787 100644
+--- a/res/values/dimens.xml
++++ b/res/values/dimens.xml
+@@ -157,6 +157,7 @@
+     <item name="face_preview_translate_x" format="float" type="dimen">0</item>
+     <item name="face_preview_scale" format="float" type="dimen">1.0</item>
+     <dimen name="face_enroll_intro_illustration_margin_bottom">0dp</dimen>
++    <dimen name="face_enroll_posture_guidance_size">348dp</dimen>
+ 
+     <!-- Keyboard -->
+     <dimen name="keyboard_picker_margin_large">68dp</dimen>
+diff --git a/res/values/miku_strings.xml b/res/values/miku_strings.xml
+index b5e7ce7..958ce78 100644
+--- a/res/values/miku_strings.xml
++++ b/res/values/miku_strings.xml
+@@ -81,4 +81,9 @@
+     <string name="show_navbar_gesture_bar_title">Gesture bar</string>
+     <string name="show_navbar_gesture_bar_summary">Show gesture bar at the bottom of the screen</string>
+ 
++
++    <!-- Face enrollment posture guidance (devices that require a specific posture) -->
++    <string name="face_enrolling_close_to_continue">Fold phone during setup</string>
++    <string name="face_enrolling_close_to_continue_description">The phone must be folded to set up or use Face Unlock</string>
++    <string name="face_enrolling_do_it_later">Do it later</string>
+ </resources>
+diff --git a/src/com/android/settings/biometrics/face/FaceEnrollFoldPage.java b/src/com/android/settings/biometrics/face/FaceEnrollFoldPage.java
+new file mode 100644
+index 0000000..71e442d
+--- /dev/null
++++ b/src/com/android/settings/biometrics/face/FaceEnrollFoldPage.java
+@@ -0,0 +1,210 @@
++/*
++ * Copyright (C) 2026 The LineageOS Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.settings.biometrics.face;
++
++import android.app.settings.SettingsEnums;
++import android.content.ComponentName;
++import android.content.res.Configuration;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.Looper;
++import android.view.View;
++import android.view.WindowManager;
++
++import androidx.window.embedding.ActivityFilter;
++import androidx.window.embedding.ActivityRule;
++import androidx.window.embedding.RuleController;
++
++import com.android.settings.R;
++import com.android.settings.biometrics.BiometricEnrollBase;
++import com.android.settings.biometrics.BiometricUtils;
++import com.android.settingslib.widget.LottieColorUtils;
++import com.android.systemui.unfold.compat.ScreenSizeFoldProvider;
++import com.android.systemui.unfold.updates.FoldProvider;
++
++import com.airbnb.lottie.LottieAnimationView;
++import com.google.android.setupcompat.template.FooterBarMixin;
++import com.google.android.setupcompat.template.FooterButton;
++import com.google.android.setupdesign.GlifLayout;
++
++import java.util.HashSet;
++import java.util.Set;
++
++/**
++ * Guidance page shown before face enrollment on devices that only allow enrollment in a specific
++ * posture (for example a foldable that has to be closed). It listens for fold changes and finishes
++ * with {@link #RESULT_FINISHED} once the device reaches an allowed posture.
++ *
++ * <p>This activity is only launched when {@code config_face_enroll_guidance_page} points to it. The
++ * allowed posture is read from {@code config_face_enroll_supported_posture}.
++ */
++public class FaceEnrollFoldPage extends BiometricEnrollBase implements FoldProvider.FoldCallback {
++
++    private static final String EXTRA_POSTURE_STATE = "posture_state";
++    private static final long POSTURE_GUIDANCE_TIMEOUT_MS = 60000L;
++
++    private final Handler mHandler = new Handler(Looper.getMainLooper());
++    private final Runnable mTimeoutRunnable = () -> onSkipButtonClick(null);
++
++    private LottieAnimationView mIllustrationLottie;
++    private int mOrientation;
++    private boolean mKeepScreenOn;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++
++        if (savedInstanceState != null) {
++            mDevicePostureState = savedInstanceState.getInt(EXTRA_POSTURE_STATE);
++        }
++
++        // Always show the guidance fullscreen, even on large screens or in a split.
++        final Set<ActivityFilter> activityFilters = new HashSet<>();
++        activityFilters.add(new ActivityFilter(
++                new ComponentName(this, FaceEnrollFoldPage.class), null /* intentAction */));
++        RuleController.getInstance(this).addRule(
++                new ActivityRule.Builder(activityFilters).setAlwaysExpand(true).build());
++
++        BiometricUtils.setDevicePosturesAllowEnroll(
++                getResources().getInteger(R.integer.config_face_enroll_supported_posture));
++
++        relayout();
++    }
++
++    @Override
++    protected void onSaveInstanceState(Bundle outState) {
++        super.onSaveInstanceState(outState);
++        outState.putInt(EXTRA_POSTURE_STATE, mDevicePostureState);
++    }
++
++    @Override
++    protected void onStart() {
++        super.onStart();
++        if (BiometricUtils.isPostureAllowEnrollment(mDevicePostureState)) {
++            onFinishPostureGuidance();
++        } else {
++            setupPostureChangeListener();
++        }
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        setKeepScreenOn(true);
++        mHandler.postDelayed(mTimeoutRunnable, POSTURE_GUIDANCE_TIMEOUT_MS);
++    }
++
++    @Override
++    protected void onPause() {
++        super.onPause();
++        setKeepScreenOn(false);
++    }
++
++    @Override
++    public void onConfigurationChanged(Configuration newConfig) {
++        super.onConfigurationChanged(newConfig);
++        if (mScreenSizeFoldProvider != null) {
++            mScreenSizeFoldProvider.onConfigurationChange(newConfig);
++        }
++        if (newConfig.orientation != mOrientation) {
++            relayout();
++        }
++    }
++
++    @Override
++    public void onFoldUpdated(boolean isFolded) {
++        mHandler.removeCallbacks(mTimeoutRunnable);
++        mDevicePostureState = isFolded
++                ? BiometricUtils.DEVICE_POSTURE_CLOSED : BiometricUtils.DEVICE_POSTURE_OPENED;
++        if (BiometricUtils.isPostureAllowEnrollment(mDevicePostureState)) {
++            onFinishPostureGuidance();
++        }
++    }
++
++    @Override
++    protected boolean shouldFinishWhenBackgrounded() {
++        // The page manages its own timeout, so it should not finish when it is backgrounded.
++        return false;
++    }
++
++    @Override
++    public int getMetricsCategory() {
++        return SettingsEnums.FACE_ENROLL_INTRO;
++    }
++
++    private void setupPostureChangeListener() {
++        if (mScreenSizeFoldProvider == null) {
++            mScreenSizeFoldProvider = new ScreenSizeFoldProvider(getApplicationContext());
++            mFoldCallback = this;
++            mScreenSizeFoldProvider.registerCallback(mFoldCallback, getMainExecutor());
++        }
++    }
++
++    private void onFinishPostureGuidance() {
++        if (isFinishing()) {
++            return;
++        }
++        setResult(RESULT_FINISHED);
++        onRemoveCallbacksAndFinish();
++    }
++
++    private void onRemoveCallbacksAndFinish() {
++        mHandler.removeCallbacks(mTimeoutRunnable);
++        finish();
++        overridePendingTransition(0 /* enterAnim */, 0 /* exitAnim */);
++    }
++
++    private void onSkipButtonClick(View view) {
++        setResult(RESULT_SKIP, getIntent());
++        onRemoveCallbacksAndFinish();
++    }
++
++    private void setKeepScreenOn(boolean keepScreenOn) {
++        if (keepScreenOn == mKeepScreenOn) {
++            return;
++        }
++        if (keepScreenOn) {
++            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
++        } else {
++            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
++        }
++        mKeepScreenOn = keepScreenOn;
++    }
++
++    private void relayout() {
++        mOrientation = getResources().getConfiguration().orientation;
++        setContentView(R.layout.face_enroll_fold_page);
++
++        final GlifLayout layout = getLayout();
++        setHeaderText(R.string.face_enrolling_close_to_continue);
++        setDescriptionText(R.string.face_enrolling_close_to_continue_description);
++
++        mIllustrationLottie = findViewById(R.id.illustration_lottie);
++        LottieColorUtils.applyDynamicColors(getApplicationContext(), mIllustrationLottie);
++        mIllustrationLottie.setAnimation(R.raw.face_posture_guidance_lottie);
++        mIllustrationLottie.setVisibility(View.VISIBLE);
++        mIllustrationLottie.playAnimation();
++
++        mFooterBarMixin = layout.getMixin(FooterBarMixin.class);
++        mFooterBarMixin.setSecondaryButton(new FooterButton.Builder(this)
++                .setText(R.string.face_enrolling_do_it_later)
++                .setListener(this::onSkipButtonClick)
++                .setButtonType(FooterButton.ButtonType.SKIP)
++                .setTheme(com.google.android.setupdesign.R.style.SudGlifButton_Secondary)
++                .build());
++    }
++}

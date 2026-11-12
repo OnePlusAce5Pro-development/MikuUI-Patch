@@ -1,0 +1,80 @@
+From 7828d722d1c5a1509c6115889df02f44dbceb1b2 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Thu, 19 Jun 2025 13:54:16 +0200
+Subject: [PATCH 1/2] sepolicy: Add rules for qtiaudiohalvendorextn
+
+Change-Id: I8a4fd405948941f18342cf9f6307bd1e4d0f8635
+---
+ generic/private/audioserver.te           | 3 +++
+ generic/private/file_contexts            | 1 +
+ generic/private/qtiaudiohalvendorextn.te | 8 ++++++++
+ generic/private/service.te               | 1 +
+ generic/private/service_contexts         | 2 +-
+ 5 files changed, 14 insertions(+), 1 deletion(-)
+ create mode 100644 generic/private/qtiaudiohalvendorextn.te
+
+diff --git a/generic/private/audioserver.te b/generic/private/audioserver.te
+index 4ef830df..6fb9c0c1 100644
+--- a/generic/private/audioserver.te
++++ b/generic/private/audioserver.te
+@@ -25,6 +25,9 @@
+ # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
++allow audioserver vendor_audioserver_service:service_manager { add find };
++binder_call(audioserver, vendor_qtiaudiohalvendorextn)
++
+ binder_call(audioserver,vendor_wfdservice);
+ binder_call(audioserver,vendor_sys_sxrauxd);
+ #allow access to ALSA MMAP FDs for AAudio API
+diff --git a/generic/private/file_contexts b/generic/private/file_contexts
+index 1b3b7d65..3393ee3e 100644
+--- a/generic/private/file_contexts
++++ b/generic/private/file_contexts
+@@ -71,6 +71,7 @@
+ /(system_ext|system/system_ext)/bin/perfetto_dump\.sh           u:object_r:vendor_perfetto_dump_exec:s0
+ /(system_ext|system/system_ext)/bin/qxrsplitauxservice  u:object_r:vendor_sys_sxrauxd_exec:s0
+ /(system_ext|system/system_ext)/bin/qsguard  u:object_r:qsguard_exec:s0
++/(system_ext|system/system_ext)/bin/qtiaudiohalvendorextn  u:object_r:vendor_qtiaudiohalvendorextn_exec:s0
+ /system_ext/bin/usbudev  u:object_r:vendor_usbudev_qti_exec:s0
+ /(system_ext|system/system_ext)/bin/imsvtdaemon u:object_r:vendor_imsvtdaemon_exec:s0
+ /(system_ext|system/system_ext)/bin/frameworks_utils_service\.sh           u:object_r:vendor_frameworksutils_launcher_exec:s0
+diff --git a/generic/private/qtiaudiohalvendorextn.te b/generic/private/qtiaudiohalvendorextn.te
+new file mode 100644
+index 00000000..9ea8defc
+--- /dev/null
++++ b/generic/private/qtiaudiohalvendorextn.te
+@@ -0,0 +1,8 @@
++type vendor_qtiaudiohalvendorextn, domain, coredomain;
++type vendor_qtiaudiohalvendorextn_exec, system_file_type, exec_type, file_type;
++
++init_daemon_domain(vendor_qtiaudiohalvendorextn)
++
++binder_use(vendor_qtiaudiohalvendorextn)
++
++allow vendor_qtiaudiohalvendorextn vendor_audioserver_service:service_manager { add find };
+diff --git a/generic/private/service.te b/generic/private/service.te
+index b91f56eb..5854a09c 100644
+--- a/generic/private/service.te
++++ b/generic/private/service.te
+@@ -29,6 +29,7 @@
+ # Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ # SPDX-License-Identifier: BSD-3-Clause-Clear
+ 
++type vendor_audioserver_service,         service_manager_type;
+ type vendor_cne_service,                 service_manager_type;
+ type vendor_imsdc_service,               service_manager_type;
+ type vendor_seemp_service,               service_manager_type;
+diff --git a/generic/private/service_contexts b/generic/private/service_contexts
+index 0ab7197c..3d3aa7e9 100644
+--- a/generic/private/service_contexts
++++ b/generic/private/service_contexts
+@@ -59,7 +59,7 @@ vendor.qvirtmgr                                u:object_r:vendor_qvirtmgr_servic
+ vendor.qti.qesdsys.IQesdSys/default            u:object_r:vendor_qesdk_service:s0
+ vendor.qti.hardware.radio.atcmdfwd.IAtCmdFwd/AtCmdFwdAidl u:object_r:radio_service:s0
+ vendor.qti.qvirt.IVirtualizationService/default   u:object_r:vendor_hal_qvirt_service:s0
+-android.media.audio.IHalAdapterVendorExtension/default               u:object_r:audioserver_service:s0
++android.media.audio.IHalAdapterVendorExtension/default               u:object_r:vendor_audioserver_service:s0
+ vendor.qti.hardware.systemhelperaidl.ISystemEvent/default     u:object_r:vendor_hal_systemhelper_aidl_service:s0
+ vendor.qti.hardware.systemhelperaidl.ISystemResource/default  u:object_r:vendor_hal_systemhelper_aidl_service:s0
+ vendor.qti.hardware.sigma_miracast_aidl.ISigma_miracast/default u:object_r:vendor_hal_sigma_miracast_service:s0

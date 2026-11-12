@@ -1,0 +1,24 @@
+From 6e515c3a8d8c854e3eb6e8aac919f38bc54c7175 Mon Sep 17 00:00:00 2001
+From: tonyfan <waterwet@outlook.com>
+Date: Fri, 17 Jul 2026 01:21:19 +0800
+Subject: [PATCH] Settings: Add HAL-owned preview config
+
+Add config_face_enroll_hal_owns_camera to miku_config.xml.
+
+Assisted-by: LLM
+Change-Id: I19832d6ea58bbce826b790d64120a44eca09af4e
+---
+ res/values/miku_config.xml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/res/values/miku_config.xml b/res/values/miku_config.xml
+index 4203e72..aeff410 100644
+--- a/res/values/miku_config.xml
++++ b/res/values/miku_config.xml
+@@ -19,4 +19,6 @@
+     <string name="custom_seekbar_default_value_is_set">Default value is set</string>
+     <!-- Show battery information -->
+     <bool name="config_show_battery_info" translatable="false">true</bool>
++    <!-- Whether Settings should open a separate camera preview during face enrollment -->
++    <bool name="config_face_enroll_hal_owns_camera" translatable="false">false</bool>
+ </resources> 

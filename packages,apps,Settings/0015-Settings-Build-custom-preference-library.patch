@@ -1,0 +1,22 @@
+From 58202ce8e96d748f5defd70db8f1c0389dcb0658 Mon Sep 17 00:00:00 2001
+From: jhenrique09 <jhsv09@gmail.com>
+Date: Mon, 11 Oct 2021 18:29:48 -0300
+Subject: [PATCH 02/10] Settings: Build custom-preference library
+
+Change-Id: Iea97492bcc73c17cca1d906733023bcf64c109dd
+---
+ Android.bp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Android.bp b/Android.bp
+index 6f0a8e7..e3116ef 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -93,6 +93,7 @@ android_library {
+         "com.android.webapp.flags-aconfig-exported-java",
+         "com_android_server_accessibility_flags_lib",
+         "connectivity_flags_lib",
++        "custom-preference",
+         "net-utils-framework-common",
+         "notification_flags_lib",
+         "securebox",

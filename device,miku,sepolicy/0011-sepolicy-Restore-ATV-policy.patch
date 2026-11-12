@@ -1,0 +1,118 @@
+From 61eac05e39d0504244f7dcc9c047bcf584fbd3a2 Mon Sep 17 00:00:00 2001
+From: Nolen Johnson <johnsonnolen@gmail.com>
+Date: Sat, 7 Nov 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore ATV policy
+
+Change-Id: I5f101e4fe3feff04737c842f0d500d43df207311
+---
+ atv/sepolicy.mk                             | 15 +++++++++++++++
+ atv/system_ext/private/platform_app.te      |  1 +
+ atv/system_ext/private/priv_app_36.te       |  2 ++
+ atv/system_ext/private/property_contexts    |  1 +
+ atv/system_ext/private/system_app.te        |  2 ++
+ atv/system_ext/private/untrusted_app.te     |  3 +++
+ atv/system_ext/public/property.te           |  1 +
+ atv/vendor/gmscore_app.te                   |  1 +
+ atv/vendor/hal_graphics_composer_default.te |  1 +
+ atv/vendor/system_app.te                    |  2 ++
+ 10 files changed, 29 insertions(+)
+ create mode 100644 atv/sepolicy.mk
+ create mode 100644 atv/system_ext/private/platform_app.te
+ create mode 100644 atv/system_ext/private/priv_app_36.te
+ create mode 100644 atv/system_ext/private/property_contexts
+ create mode 100644 atv/system_ext/private/system_app.te
+ create mode 100644 atv/system_ext/private/untrusted_app.te
+ create mode 100644 atv/system_ext/public/property.te
+ create mode 100644 atv/vendor/gmscore_app.te
+ create mode 100644 atv/vendor/hal_graphics_composer_default.te
+ create mode 100644 atv/vendor/system_app.te
+
+diff --git a/atv/sepolicy.mk b/atv/sepolicy.mk
+new file mode 100644
+index 0000000..5152d07
+--- /dev/null
++++ b/atv/sepolicy.mk
+@@ -0,0 +1,15 @@
++#
++# This policy configuration will be used by atv products that
++# inherit from Lineage
++#
++
++ifneq ($(TARGET_USES_PREBUILT_VENDOR_SEPOLICY), true)
++BOARD_VENDOR_SEPOLICY_DIRS += \
++    device/miku/sepolicy/atv/vendor
++endif
++
++SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += \
++   device/miku/sepolicy/atv/system_ext/private
++
++SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += \
++   device/miku/sepolicy/atv/system_ext/public
+diff --git a/atv/system_ext/private/platform_app.te b/atv/system_ext/private/platform_app.te
+new file mode 100644
+index 0000000..0d790d3
+--- /dev/null
++++ b/atv/system_ext/private/platform_app.te
+@@ -0,0 +1 @@
++set_prop(platform_app, vendor_always_on_prop)
+diff --git a/atv/system_ext/private/priv_app_36.te b/atv/system_ext/private/priv_app_36.te
+new file mode 100644
+index 0000000..0344f8c
+--- /dev/null
++++ b/atv/system_ext/private/priv_app_36.te
+@@ -0,0 +1,2 @@
++# Katniss is talkative to the point it makes logs hard to parse
++dontaudit priv_app_36 cgroup_v2:dir search;
+diff --git a/atv/system_ext/private/property_contexts b/atv/system_ext/private/property_contexts
+new file mode 100644
+index 0000000..4afc932
+--- /dev/null
++++ b/atv/system_ext/private/property_contexts
+@@ -0,0 +1 @@
++vendor.alwayson.backlight.animation                 u:object_r:vendor_always_on_prop:s0
+diff --git a/atv/system_ext/private/system_app.te b/atv/system_ext/private/system_app.te
+new file mode 100644
+index 0000000..6c7f09b
+--- /dev/null
++++ b/atv/system_ext/private/system_app.te
+@@ -0,0 +1,2 @@
++# Allow TvSettings to read/write adb port prop
++set_prop(system_app, adbd_config_prop)
+diff --git a/atv/system_ext/private/untrusted_app.te b/atv/system_ext/private/untrusted_app.te
+new file mode 100644
+index 0000000..30ef87f
+--- /dev/null
++++ b/atv/system_ext/private/untrusted_app.te
+@@ -0,0 +1,3 @@
++dontaudit untrusted_app odm_cast_prop:file r_file_perms;
++dontaudit untrusted_app proc_net:file r_file_perms;
++dontaudit untrusted_app wifi_config_prop:file r_file_perms;
+diff --git a/atv/system_ext/public/property.te b/atv/system_ext/public/property.te
+new file mode 100644
+index 0000000..7faecb4
+--- /dev/null
++++ b/atv/system_ext/public/property.te
+@@ -0,0 +1 @@
++system_restricted_prop(vendor_always_on_prop)
+diff --git a/atv/vendor/gmscore_app.te b/atv/vendor/gmscore_app.te
+new file mode 100644
+index 0000000..3c30c96
+--- /dev/null
++++ b/atv/vendor/gmscore_app.te
+@@ -0,0 +1 @@
++get_prop(gmscore_app, apexd_prop)
+diff --git a/atv/vendor/hal_graphics_composer_default.te b/atv/vendor/hal_graphics_composer_default.te
+new file mode 100644
+index 0000000..52fd6aa
+--- /dev/null
++++ b/atv/vendor/hal_graphics_composer_default.te
+@@ -0,0 +1 @@
++get_prop(hal_graphics_composer_default, vendor_always_on_prop)
+diff --git a/atv/vendor/system_app.te b/atv/vendor/system_app.te
+new file mode 100644
+index 0000000..42532eb
+--- /dev/null
++++ b/atv/vendor/system_app.te
+@@ -0,0 +1,2 @@
++# com.android.tv.settings trying to reach into com.google.android.gms
++dontaudit system_app privapp_data_file:dir search;

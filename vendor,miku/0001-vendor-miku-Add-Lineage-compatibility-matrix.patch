@@ -1,0 +1,31 @@
+From 31a255a964e28f097a2a8b431238d18c8b7ee478 Mon Sep 17 00:00:00 2001
+From: Nick Reuter <nreuter85@gmail.com>
+Date: Thu, 27 Nov 2025 21:08:46 -0600
+Subject: [PATCH] vendor/miku: Add Lineage compatibility matrix
+
+Add framework_compatibility_matrix.lineage.xml to PRODUCT_PACKAGES so
+the Lineage framework compatibility matrix is included in the build.
+
+Based on LineageOS commit 60444c0d ("lineage: Move
+device_framework_matrix.xml to hardware/lineage/interfaces").
+
+Change-Id: I3ebbd53d4e9920e8a56afd78e18022b06a7b3826
+---
+ build/product/miku_product_common.mk | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/build/product/miku_product_common.mk b/build/product/miku_product_common.mk
+index 258e5b5..a8a75ba 100644
+--- a/build/product/miku_product_common.mk
++++ b/build/product/miku_product_common.mk
+@@ -43,6 +43,10 @@ ifneq ($(TARGET_DISABLE_EPPE),true)
+ $(call enforce-product-packages-exist-internal,$(lastword $(_include_stack)),product_manifest.xml rild Calendar Launcher3 Launcher3Go Launcher3QuickStep Launcher3QuickStepGo android.hidl.memory@1.0-impl.vendor vndk_apex_snapshot_package)
+ endif
+ 
++# Lineage interfaces
++PRODUCT_PACKAGES += \
++    framework_compatibility_matrix.lineage.xml
++
+ # Applications
+ ifneq ($(TARGET_NO_APERTURE),true)
+     PRODUCT_PACKAGES += Aperture

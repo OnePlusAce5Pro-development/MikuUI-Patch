@@ -1,0 +1,48 @@
+From da64d83041ae40d02a58113581ef9df768b2e299 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Mon, 12 Oct 2026 21:38:33 +0300
+Subject: [PATCH] Partially revert "Settings: Use expressive lottie for
+ face enroll education"
+
+This partially reverts commit cf56d1fcfb3d6535affac89227f67627157b26c6.
+
+Reason for revert: We now have the expressive style enabled, so the java
+changes are no longer needed.
+
+Change-Id: I593a250f369bf1e4eacfb973fdaf81db1e3793f3
+---
+ .../biometrics/face/FaceEnrollEducation.java       | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/src/com/android/settings/biometrics/face/FaceEnrollEducation.java b/src/com/android/settings/biometrics/face/FaceEnrollEducation.java
+index 34eb2a3..e521467 100644
+--- a/src/com/android/settings/biometrics/face/FaceEnrollEducation.java
++++ b/src/com/android/settings/biometrics/face/FaceEnrollEducation.java
+@@ -171,8 +171,11 @@ public class FaceEnrollEducation extends BiometricEnrollBase {
+         if (mIsUsingLottie) {
+             mIllustrationDefault.stop();
+             mIllustrationDefault.setVisibility(View.INVISIBLE);
+-            mIllustrationLottie.setAnimation(R.raw.face_education_lottie_expressive);
+-            setupllIllustrationAnim(mIllustrationLottie);
++            mIllustrationLottie.setAnimation(mIsUsingExpressiveStyle
++                    ? R.raw.face_education_lottie_expressive : R.raw.face_education_lottie);
++            if (mIsUsingExpressiveStyle) {
++                setupllIllustrationAnim(mIllustrationLottie);
++            }
+             mIllustrationLottie.setVisibility(View.VISIBLE);
+ 
+             mIllustrationLottie.addAnimatorListener(mA11yUpdater);
+@@ -574,8 +577,11 @@ public class FaceEnrollEducation extends BiometricEnrollBase {
+ 
+     private void showDefaultIllustration() {
+         if (mIsUsingLottie) {
+-            mIllustrationLottie.setAnimation(R.raw.face_education_lottie_expressive);
+-            setupllIllustrationAnim(mIllustrationLottie);
++            mIllustrationLottie.setAnimation(mIsUsingExpressiveStyle
++                    ? R.raw.face_education_lottie_expressive : R.raw.face_education_lottie);
++            if (mIsUsingExpressiveStyle) {
++                setupllIllustrationAnim(mIllustrationLottie);
++            }
+             mIllustrationLottie.setVisibility(View.VISIBLE);
+             forceConfigureA11yDelegate(true);
+             mIllustrationLottie.setProgress(0f);

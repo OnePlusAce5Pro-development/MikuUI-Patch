@@ -1,0 +1,22 @@
+From 0dea391f63601d61469dedf334e7bc05dba649c3 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Wed, 2 Nov 2022 15:37:30 +0100
+Subject: [PATCH] check_boot_jars: Add Lineage SDK packages
+
+Change-Id: I8ef1ccd502653026b5d1c51b9359e500d0b413a2
+---
+ scripts/check_boot_jars/package_allowed_list.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/scripts/check_boot_jars/package_allowed_list.txt b/scripts/check_boot_jars/package_allowed_list.txt
+index ad383cb..1f7c9cf 100644
+--- a/scripts/check_boot_jars/package_allowed_list.txt
++++ b/scripts/check_boot_jars/package_allowed_list.txt
+@@ -238,3 +238,7 @@ com\.google\.wear\..*
+ # Packages used for display offload in Wear OS
+ vendor\.google_clockwork\.displayoffload3
+ vendor\.google_clockwork\.displayoffload3\..*
++
++# Lineage adds
++lineageos\.platform
++org\.lineageos\.platform\.internal

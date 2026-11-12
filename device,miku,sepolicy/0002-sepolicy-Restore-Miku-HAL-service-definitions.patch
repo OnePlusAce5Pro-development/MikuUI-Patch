@@ -1,0 +1,167 @@
+From a064439f46cc7b7c2f2e6e9dfb4af1339cdcfe6c Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Sun, 27 Sep 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore Miku HAL service definitions
+
+Restore the lineage HAL attributes, services and dynamic property
+definitions used by MikuUI.
+
+Change-Id: I72facab921f0bb33665d105308f36c4a8820eeff
+---
+ common/dynamic/file.te                    |  2 ++
+ common/dynamic/genfs_contexts             |  9 +++++++++
+ common/dynamic/hal_lineage_health.te      |  4 ++++
+ common/dynamic/hal_lineage_livedisplay.te |  4 ++++
+ common/dynamic/hal_lineage_powershare.te  |  4 ++++
+ common/dynamic/hal_lineage_touch.te       |  3 +++
+ common/dynamic/service.te                 |  4 ++++
+ common/dynamic/service_contexts           | 19 +++++++++++++++++++
+ common/public/attributes                  |  8 +++++++-
+ common/public/file.te                     |  2 ++
+ common/public/property.te                 |  6 ++++++
+ 11 files changed, 64 insertions(+), 1 deletion(-)
+ create mode 100644 common/dynamic/hal_lineage_health.te
+ create mode 100644 common/dynamic/hal_lineage_livedisplay.te
+ create mode 100644 common/dynamic/hal_lineage_powershare.te
+ create mode 100644 common/dynamic/service.te
+ create mode 100644 common/dynamic/service_contexts
+ create mode 100644 common/public/file.te
+
+diff --git a/common/dynamic/file.te b/common/dynamic/file.te
+index c77d9ec..51fa919 100644
+--- a/common/dynamic/file.te
++++ b/common/dynamic/file.te
+@@ -1 +1,3 @@
+ type proc_deny_new_usb, fs_type, proc_type;
++type sysfs_livedisplay_tuneable, fs_type, sysfs_type;
++type sysfs_usb_data_enabled, fs_type, sysfs_type;
+diff --git a/common/dynamic/genfs_contexts b/common/dynamic/genfs_contexts
+index 60cf2c6..4287895 100644
+--- a/common/dynamic/genfs_contexts
++++ b/common/dynamic/genfs_contexts
+@@ -1 +1,10 @@
+ genfscon proc /sys/kernel/deny_new_usb u:object_r:proc_deny_new_usb:s0
++
++genfscon sysfs /devices/virtual/graphics/fb0/acl u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/aco u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/cabc u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/color_enhance u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/hbm u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/rgb u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/sre u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/virtual/graphics/fb0/reading_mode u:object_r:sysfs_livedisplay_tuneable:s0
+diff --git a/common/dynamic/hal_lineage_health.te b/common/dynamic/hal_lineage_health.te
+new file mode 100644
+index 0000000..2f6ba2a
+--- /dev/null
++++ b/common/dynamic/hal_lineage_health.te
+@@ -0,0 +1,4 @@
++# HwBinder IPC from client to server
++binder_call(hal_lineage_health_client, hal_lineage_health_server)
++
++hal_attribute_service(hal_lineage_health, hal_lineage_health_service)
+diff --git a/common/dynamic/hal_lineage_livedisplay.te b/common/dynamic/hal_lineage_livedisplay.te
+new file mode 100644
+index 0000000..90a5ad5
+--- /dev/null
++++ b/common/dynamic/hal_lineage_livedisplay.te
+@@ -0,0 +1,4 @@
++# HwBinder IPC from client to server
++binder_call(hal_lineage_livedisplay_client, hal_lineage_livedisplay_server)
++
++hal_attribute_service(hal_lineage_livedisplay, hal_lineage_livedisplay_service)
+diff --git a/common/dynamic/hal_lineage_powershare.te b/common/dynamic/hal_lineage_powershare.te
+new file mode 100644
+index 0000000..1128694
+--- /dev/null
++++ b/common/dynamic/hal_lineage_powershare.te
+@@ -0,0 +1,4 @@
++# HwBinder IPC from client to server
++binder_call(hal_lineage_powershare_client, hal_lineage_powershare_server)
++
++hal_attribute_service(hal_lineage_powershare, hal_lineage_powershare_service)
+diff --git a/common/dynamic/hal_lineage_touch.te b/common/dynamic/hal_lineage_touch.te
+index 0cc8082..e52ae88 100644
+--- a/common/dynamic/hal_lineage_touch.te
++++ b/common/dynamic/hal_lineage_touch.te
+@@ -1,5 +1,8 @@
+ # HwBinder IPC from client to server
+ binder_call(hal_lineage_touch_client, hal_lineage_touch_server)
+ 
++hal_attribute_service(hal_lineage_touch, hal_lineage_touch_service)
++
++# Miku-specific (restored)
+ add_hwservice(hal_lineage_touch_server, hal_lineage_touch_hwservice)
+ allow hal_lineage_touch_client hal_lineage_touch_hwservice:hwservice_manager find;
+diff --git a/common/dynamic/service.te b/common/dynamic/service.te
+new file mode 100644
+index 0000000..c45bc0d
+--- /dev/null
++++ b/common/dynamic/service.te
+@@ -0,0 +1,4 @@
++type hal_lineage_health_service, hal_service_type, service_manager_type;
++type hal_lineage_livedisplay_service, hal_service_type, service_manager_type;
++type hal_lineage_powershare_service, hal_service_type, service_manager_type;
++type hal_lineage_touch_service, hal_service_type, service_manager_type;
+diff --git a/common/dynamic/service_contexts b/common/dynamic/service_contexts
+new file mode 100644
+index 0000000..bdc2533
+--- /dev/null
++++ b/common/dynamic/service_contexts
+@@ -0,0 +1,19 @@
++vendor.lineage.health.IChargingControl/default                 u:object_r:hal_lineage_health_service:s0
++vendor.lineage.health.IFastCharge/default                      u:object_r:hal_lineage_health_service:s0
++vendor.lineage.livedisplay.IAdaptiveBacklight/default          u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IAntiFlicker/default                u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IAutoContrast/default               u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IColorBalance/default               u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IColorEnhancement/default           u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IDisplayColorCalibration/default    u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IDisplayModes/default               u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IPictureAdjustment/default          u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.IReadingEnhancement/default         u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.livedisplay.ISunlightEnhancement/default        u:object_r:hal_lineage_livedisplay_service:s0
++vendor.lineage.powershare.IPowerShare/default                  u:object_r:hal_lineage_powershare_service:s0
++vendor.lineage.touch.IGloveMode/default                        u:object_r:hal_lineage_touch_service:s0
++vendor.lineage.touch.IHighTouchPollingRate/default             u:object_r:hal_lineage_touch_service:s0
++vendor.lineage.touch.IKeyDisabler/default                      u:object_r:hal_lineage_touch_service:s0
++vendor.lineage.touch.IKeySwapper/default                       u:object_r:hal_lineage_touch_service:s0
++vendor.lineage.touch.IStylusMode/default                       u:object_r:hal_lineage_touch_service:s0
++vendor.lineage.touch.ITouchscreenGesture/default               u:object_r:hal_lineage_touch_service:s0
+diff --git a/common/public/attributes b/common/public/attributes
+index 3a9fb8c..d8c4c98 100644
+--- a/common/public/attributes
++++ b/common/public/attributes
+@@ -1,4 +1,10 @@
+ # HALs
++hal_attribute_lineage(lineage_health)
++hal_attribute_lineage(lineage_livedisplay)
++hal_attribute_lineage(lineage_touch)
++hal_attribute_lineage(lineage_trust)
++hal_attribute_lineage(lineage_powershare)
++
++# Miku-specific (restored)
+ hal_attribute_lineage(lineage_camera_motor)
+ hal_attribute_lineage(lineage_fod)
+-hal_attribute_lineage(lineage_touch)
+diff --git a/common/public/file.te b/common/public/file.te
+new file mode 100644
+index 0000000..00c194d
+--- /dev/null
++++ b/common/public/file.te
+@@ -0,0 +1,2 @@
++type iso9660, sdcard_type, fs_type, mlstrustedobject;
++type udf, sdcard_type, fs_type, mlstrustedobject;
+diff --git a/common/public/property.te b/common/public/property.te
+index ef4e1de..b876354 100644
+--- a/common/public/property.te
++++ b/common/public/property.te
+@@ -1,2 +1,8 @@
++# NFC
++system_public_prop(vendor_persist_nfc_prop)
++
++# USB
++system_vendor_config_prop(usb_uvc_config_prop)
++
+ # xtra-daemon control
+ system_restricted_prop(xtra_control_prop)

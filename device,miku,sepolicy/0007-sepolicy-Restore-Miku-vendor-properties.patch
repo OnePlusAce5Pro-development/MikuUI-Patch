@@ -1,0 +1,52 @@
+From 65a314071e93d70421caa325a35b22e37f8b63a8 Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Wed, 2 Sep 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore Miku vendor properties
+
+Restore camera remap, IR, FM radio and light vendor properties.
+
+Change-Id: I64f7f0cb3f7f91038a08fcb02f76ffb9df842d10
+---
+ common/vendor/property.te       | 12 ++++++++++++
+ common/vendor/property_contexts | 13 +++++++++++++
+ 2 files changed, 25 insertions(+)
+
+diff --git a/common/vendor/property.te b/common/vendor/property.te
+index 2dca822..6a27cb0 100644
+--- a/common/vendor/property.te
++++ b/common/vendor/property.te
+@@ -1,2 +1,14 @@
++# Camera IDs remapping
++vendor_internal_prop(vendor_camera_remapid_prop)
++
++# Camera skip failed IDs
++vendor_internal_prop(vendor_camera_skip_failed_ids_prop)
++
++# IR
++vendor_internal_prop(vendor_ir_prop)
++
+ # Light
+ vendor_internal_prop(vendor_light_prop)
++
++# FM Radio app
++vendor_public_prop(vendor_fm_radio_app_prop)
+diff --git a/common/vendor/property_contexts b/common/vendor/property_contexts
+index 0d39fdb..a6e431f 100644
+--- a/common/vendor/property_contexts
++++ b/common/vendor/property_contexts
+@@ -1,2 +1,15 @@
++# Camera IDs remapping
++vendor.camera.remapid                  u:object_r:vendor_camera_remapid_prop:s0
++
++# Camera skip failed IDs
++vendor.camera.skip_failed_ids          u:object_r:vendor_camera_skip_failed_ids_prop:s0
++
++# IR
++vendor.ir.carrier_freqs                u:object_r:vendor_ir_prop:s0
++
+ # Light
+ vendor.light.backlight.disable         u:object_r:vendor_light_prop:s0
++
++# FM Radio app
++ro.vendor.builtin_fm_antenna_support   u:object_r:vendor_fm_radio_app_prop:s0 exact bool
++ro.vendor.fm.use_audio_session         u:object_r:vendor_fm_radio_app_prop:s0 exact bool

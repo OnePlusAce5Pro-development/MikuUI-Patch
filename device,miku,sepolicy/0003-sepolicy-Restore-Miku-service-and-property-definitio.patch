@@ -1,0 +1,169 @@
+From 7cff34099633536627c92aff5bd81bf2cd319bec Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Sun, 27 Sep 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore Miku service and property definitions
+
+Restore the MikuUI services, property types and app contexts.
+
+Change-Id: I3d6df2c6ca041f61c3c296ced5a85bed9509746a
+---
+ common/private/property.te       | 10 +++++++
+ common/private/property_contexts | 51 ++++++++++++++++++++++++++++++--
+ common/private/seapp_contexts    |  9 +++++-
+ common/private/service.te        | 16 +++++-----
+ common/private/service_contexts  | 17 ++++++-----
+ 5 files changed, 85 insertions(+), 18 deletions(-)
+
+diff --git a/common/private/property.te b/common/private/property.te
+index 4965d4d..1829933 100644
+--- a/common/private/property.te
++++ b/common/private/property.te
+@@ -1,2 +1,12 @@
++# ATV
++# used by mediashell
++product_internal_prop(odm_cast_prop)
++
++# Custom legal URL
++system_internal_prop(legal_url_prop)
++
++# Custom version
++system_internal_prop(custom_version_prop)
++
+ # Recovery update
+ system_internal_prop(recovery_update_prop)
+diff --git a/common/private/property_contexts b/common/private/property_contexts
+index 93da698..8330dce 100644
+--- a/common/private/property_contexts
++++ b/common/private/property_contexts
+@@ -1,10 +1,57 @@
++# ATV
++# used by mediashell
++ro.odm.cast.ssid_suffix u:object_r:odm_cast_prop:s0
++
++# Bluetooth
++bluetooth.hci.disabled_commands        u:object_r:bluetooth_config_prop:s0
++
+ # Camera
+ persist.vendor.camera.privapp.list     u:object_r:camera2_extensions_prop:s0
+ vendor.camera.aux.packageexcludelist   u:object_r:camera2_extensions_prop:s0
+ vendor.camera.aux.packagelist          u:object_r:camera2_extensions_prop:s0
+ 
+-# Radio
+-ro.telephony.use_old_mnc_mcc_format    u:object_r:telephony_config_prop:s0
++# Custom legal URL
++ro.lineagelegal.url                    u:object_r:legal_url_prop:s0
++
++# Custom version
++ro.lineage.version                     u:object_r:custom_version_prop:s0
++ro.lineage.display.version             u:object_r:custom_version_prop:s0
++ro.lineage.build.version               u:object_r:custom_version_prop:s0
++ro.lineage.releasetype                 u:object_r:custom_version_prop:s0
++ro.lineage.device                      u:object_r:custom_version_prop:s0
++
++# Force multi-window behavior
++ro.config.force_multi_window           u:object_r:exported_config_prop:s0 exact bool
++
++# NFC
++persist.vendor.nfc.config_file_name     u:object_r:vendor_persist_nfc_prop:s0 exact string
++persist.vendor.nfc.fw_file_name         u:object_r:vendor_persist_nfc_prop:s0 exact string
++persist.vendor.nfc.nxp.lx_debug_mask    u:object_r:vendor_persist_nfc_prop:s0 exact string
++
++# Recovery battery
++ro.recovery.batteryless                u:object_r:recovery_config_prop:s0 exact bool
++
++# Recovery filesystem
++ro.recovery.supported_fs               u:object_r:recovery_config_prop:s0 exact string
++
++# Recovery input
++ro.minui.blacklist_input_devices       u:object_r:recovery_config_prop:s0
++
++# Recovery touch
++ro.minui.default_touch_rotation        u:object_r:recovery_config_prop:s0
++
++# Recovery update
++persist.vendor.recovery_update         u:object_r:recovery_update_prop:s0
+ 
+ # xtra-daemon control
+ persist.sys.xtra-daemon.enabled        u:object_r:xtra_control_prop:s0 exact bool
++
++# Screen mirroring disablement
++persist.sysui.disable_mirroring_confirmation_dialog u:object_r:hdmi_config_prop:s0
++
++# USB
++ro.usb.uvc.disable_video_encode_flag   u:object_r:usb_uvc_config_prop:s0
++vendor.usb.uvc.payload_transfer_size   u:object_r:usb_uvc_config_prop:s0
++
++# Miku-specific (restored)
++ro.telephony.use_old_mnc_mcc_format    u:object_r:telephony_config_prop:s0
+diff --git a/common/private/seapp_contexts b/common/private/seapp_contexts
+index 0b94f96..610bc3d 100644
+--- a/common/private/seapp_contexts
++++ b/common/private/seapp_contexts
+@@ -1,3 +1,10 @@
++# AndroidMediaShell (mediashell_app) access to Widevine
++user=_app isPrivApp=true seinfo=mediashell domain=mediashell_app name=com.google.android.apps.mediashell type=privapp_data_file levelFrom=all
++user=_app isPrivApp=true seinfo=mediashell domain=mediashell_app name=com.google.android.apps.mediashell:* type=privapp_data_file levelFrom=all
++
++# Updater
++user=_app isPrivApp=true seinfo=platform name=org.lineageos.updater domain=updater_app type=app_data_file levelFrom=user
++
++# Miku-specific (restored)
+ user=_app isPrivApp=true seinfo=platform name=com.android.gallery3d domain=gallery_app type=app_data_file levelFrom=user
+ user=_app isPrivApp=true seinfo=platform name=org.lineageos.snap domain=snap_app type=app_data_file levelFrom=user
+-user=_app isPrivApp=true seinfo=platform name=org.lineageos.updater domain=updater_app type=app_data_file levelFrom=user
+diff --git a/common/private/service.te b/common/private/service.te
+index c7f513d..dcca976 100644
+--- a/common/private/service.te
++++ b/common/private/service.te
+@@ -1,13 +1,15 @@
+ type adbroot_service,                   service_manager_type;
+-type lineage_audio_service, system_api_service, system_server_service, service_manager_type;
+ type lineage_hardware_service, system_api_service, system_server_service, service_manager_type;
+-type lineage_performance_service, system_api_service, system_server_service, service_manager_type;
++type lineage_health_interface_service, system_api_service, system_server_service, service_manager_type;
++type lineage_globalactions_service, system_api_service, system_server_service, service_manager_type;
++type lineage_livedisplay_service, system_api_service, system_server_service, service_manager_type;
+ type lineage_profile_service, system_api_service, system_server_service, service_manager_type;
+-type lineage_weather_service, system_api_service, system_server_service, service_manager_type;
++type lineage_sensitive_phone_numbers_service, system_api_service, system_server_service, service_manager_type;
++type lineage_trust_service, system_api_service, system_server_service, service_manager_type;
+ 
+-# App Lock
++# Miku-specific (restored)
++type lineage_audio_service, system_api_service, system_server_service, service_manager_type;
++type lineage_performance_service, system_api_service, system_server_service, service_manager_type;
++type lineage_weather_service, system_api_service, system_server_service, service_manager_type;
+ type applock_service, system_api_service, system_server_service, service_manager_type;
+-
+-# Boost Framework
+ type boost_framework_service, system_api_service, system_server_service, service_manager_type;
+-
+diff --git a/common/private/service_contexts b/common/private/service_contexts
+index 7d81c67..97bc123 100644
+--- a/common/private/service_contexts
++++ b/common/private/service_contexts
+@@ -1,15 +1,16 @@
+-
+-lineageaudio                              u:object_r:lineage_audio_service:s0
++lineageglobalactions                      u:object_r:lineage_globalactions_service:s0
+ lineagehardware                           u:object_r:lineage_hardware_service:s0
+-lineageperformance                        u:object_r:lineage_performance_service:s0
+-lineageweather                            u:object_r:lineage_weather_service:s0
++lineagehealth                             u:object_r:lineage_health_interface_service:s0
++lineagelivedisplay                        u:object_r:lineage_livedisplay_service:s0
++lineagesensitivephone                     u:object_r:lineage_sensitive_phone_numbers_service:s0
++lineagetrust                              u:object_r:lineage_trust_service:s0
+ profile                                   u:object_r:lineage_profile_service:s0
+ 
+ adbroot_service                           u:object_r:adbroot_service:s0
+ 
+-# App Lock
++# Miku-specific (restored)
++lineageaudio                              u:object_r:lineage_audio_service:s0
++lineageperformance                        u:object_r:lineage_performance_service:s0
++lineageweather                            u:object_r:lineage_weather_service:s0
+ applock                                   u:object_r:applock_service:s0
+-
+-# Boost framework
+ boost_framework                           u:object_r:boost_framework_service:s0
+-

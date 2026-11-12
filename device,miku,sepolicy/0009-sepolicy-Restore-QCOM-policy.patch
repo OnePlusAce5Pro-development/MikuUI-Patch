@@ -1,0 +1,247 @@
+From 69bbd08fb6d428311f5d0ef90901cfa38f73c436 Mon Sep 17 00:00:00 2001
+From: LuK1337 <priv.luk@gmail.com>
+Date: Sat, 22 Aug 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore QCOM policy
+
+Restore the QCOM LiveDisplay, power, GNSS, scheduling and graphics
+policy used by MikuUI.
+
+Change-Id: I32bf1c3ec555501ba0dfdfd4b8a89c4ab833bb91
+---
+ qcom/dynamic/genfs_contexts                   |  4 ++++
+ qcom/dynamic/hal_lineage_livedisplay_qti.te   |  7 +++++++
+ qcom/dynamic/hal_lineage_livedisplay_sysfs.te |  5 +++++
+ qcom/private/platform_app.te                  |  2 ++
+ qcom/sepolicy.mk                              |  9 ++++++---
+ qcom/vendor/file_contexts                     |  7 +++++--
+ qcom/vendor/fm_app.te                         |  1 +
+ qcom/vendor/genfs_contexts                    | 12 ++++++++++++
+ qcom/vendor/hal_gnss_qti.te                   |  2 +-
+ qcom/vendor/hal_lineage_health_default.te     |  2 ++
+ qcom/vendor/hal_lineage_livedisplay_qti.te    | 14 ++++++++++++++
+ qcom/vendor/hal_perf_default.te               |  2 ++
+ qcom/vendor/hal_power_default.te              |  6 ++++++
+ qcom/vendor/init.te                           |  3 +++
+ qcom/vendor/location.te                       |  2 ++
+ qcom/vendor/postinstall.te                    |  3 +++
+ qcom/vendor/vendor_init.te                    |  1 +
+ 17 files changed, 76 insertions(+), 6 deletions(-)
+ create mode 100644 qcom/dynamic/genfs_contexts
+ create mode 100644 qcom/dynamic/hal_lineage_livedisplay_qti.te
+ create mode 100644 qcom/dynamic/hal_lineage_livedisplay_sysfs.te
+ create mode 100644 qcom/private/platform_app.te
+ create mode 100644 qcom/vendor/fm_app.te
+ create mode 100644 qcom/vendor/hal_lineage_health_default.te
+ create mode 100644 qcom/vendor/hal_lineage_livedisplay_qti.te
+ create mode 100644 qcom/vendor/hal_power_default.te
+ create mode 100644 qcom/vendor/init.te
+ create mode 100644 qcom/vendor/postinstall.te
+ create mode 100644 qcom/vendor/vendor_init.te
+
+diff --git a/qcom/dynamic/genfs_contexts b/qcom/dynamic/genfs_contexts
+new file mode 100644
+index 0000000..19bca20
+--- /dev/null
++++ b/qcom/dynamic/genfs_contexts
+@@ -0,0 +1,4 @@
++genfscon sysfs /devices/platform/soc/soc:qcom,dsi-display-primary/acl     u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/platform/soc/soc:qcom,dsi-display-primary/cabc    u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/platform/soc/soc:qcom,dsi-display-primary/dc      u:object_r:sysfs_livedisplay_tuneable:s0
++genfscon sysfs /devices/platform/soc/soc:qcom,dsi-display-primary/hbm     u:object_r:sysfs_livedisplay_tuneable:s0
+diff --git a/qcom/dynamic/hal_lineage_livedisplay_qti.te b/qcom/dynamic/hal_lineage_livedisplay_qti.te
+new file mode 100644
+index 0000000..76c79ba
+--- /dev/null
++++ b/qcom/dynamic/hal_lineage_livedisplay_qti.te
+@@ -0,0 +1,7 @@
++# Do not use add_service() as hal_graphics_composer_default may be the provider as well
++allow hal_lineage_livedisplay_qti qdisplay_service:service_manager find;
++
++binder_call(hal_lineage_livedisplay_qti, hal_graphics_composer_default)
++
++# Allow LiveDisplay to access vendor display property
++get_prop(hal_lineage_livedisplay_qti, vendor_display_prop)
+diff --git a/qcom/dynamic/hal_lineage_livedisplay_sysfs.te b/qcom/dynamic/hal_lineage_livedisplay_sysfs.te
+new file mode 100644
+index 0000000..f3995d2
+--- /dev/null
++++ b/qcom/dynamic/hal_lineage_livedisplay_sysfs.te
+@@ -0,0 +1,5 @@
++# Allow LiveDisplay to access vendor display property
++get_prop(hal_lineage_livedisplay_sysfs, vendor_display_prop)
++
++# Allow LiveDisplay to read files in sysfs_graphics
++r_dir_file(hal_lineage_livedisplay_sysfs, sysfs_graphics)
+diff --git a/qcom/private/platform_app.te b/qcom/private/platform_app.te
+new file mode 100644
+index 0000000..2c8e854
+--- /dev/null
++++ b/qcom/private/platform_app.te
+@@ -0,0 +1,2 @@
++hal_client_domain(platform_app, vendor_hal_soter)
++hal_client_domain(platform_app_36, vendor_hal_soter)
+diff --git a/qcom/sepolicy.mk b/qcom/sepolicy.mk
+index af0cd14..f0a9634 100644
+--- a/qcom/sepolicy.mk
++++ b/qcom/sepolicy.mk
+@@ -1,6 +1,6 @@
+ #
+ # This policy configuration will be used by all qcom products
+-# that inherit from Miku UI
++# that inherit from Lineage
+ #
+ 
+ ifeq ($(TARGET_COPY_OUT_VENDOR), vendor)
+@@ -22,17 +22,20 @@ BOARD_VENDOR_SEPOLICY_DIRS += \
+     device/miku/sepolicy/qcom/vendor
+ endif
+ 
+-ifeq (,$(filter msm8960 msm8226 msm8610 msm8974 apq8084 msm8909 msm8916 msm8952 msm8992 msm8994 msm8937 msm8953 msm8996 msm8998 sdm660 sdm710 sdm845, $(TARGET_BOARD_PLATFORM)))
++ifeq (,$(filter device/qcom/sepolicy-legacy-um/legacy/vendor/common device/qcom/sepolicy_vndr/legacy-um/legacy/vendor/common, $(BOARD_VENDOR_SEPOLICY_DIRS)))
+ BOARD_SEPOLICY_M4DEFS += \
++    custom_ab_block_device=vendor_custom_ab_block_device \
+     display_vendor_data_file=vendor_display_vendor_data_file \
+     hal_gnss_qti=vendor_hal_gnss_qti \
+-    hal_keymaster_qti_exec=vendor_hal_keymaster_qti_exec \
+     hal_perf_default=vendor_hal_perf_default \
+     location_domain=vendor_location \
+     persist_block_device=vendor_persist_block_device \
+     qdisplay_service=vendor_qdisplay_service \
+     sysfs_battery_supply=vendor_sysfs_battery_supply \
++    sysfs_devfreq=vendor_sysfs_devfreq \
+     sysfs_graphics=vendor_sysfs_graphics \
++    sysfs_kgsl=vendor_sysfs_kgsl \
++    sysfs_scsi_host=vendor_sysfs_scsi_host \
+     sysfs_socinfo_sensitive=vendor_sysfs_soc_sensitive \
+     sysfs_usb_supply=vendor_sysfs_usb_supply
+ else
+diff --git a/qcom/vendor/file_contexts b/qcom/vendor/file_contexts
+index 06545a8..d7d5ffe 100644
+--- a/qcom/vendor/file_contexts
++++ b/qcom/vendor/file_contexts
+@@ -1,5 +1,8 @@
+-# CryptfsHW HAL
+-/(vendor|system/vendor)/bin/hw/vendor\.qti\.hardware\.cryptfshw@1\.0-service-qti\.qsee   u:object_r:hal_keymaster_qti_exec:s0
++# LiveDisplay HAL
++/(vendor|system/vendor)/bin/hw/vendor\.lineage\.livedisplay-service\.sdm          u:object_r:hal_lineage_livedisplay_qti_exec:s0
+ 
+ # Power
+ /(vendor|system/vendor)/bin/hw/android\.hardware\.power-service-qti               u:object_r:hal_power_default_exec:s0
++/sys/devices(/platform)?/soc/[a-f0-9]+.qcom,mdss_mdp/idle_state                   u:object_r:sysfs_graphics:s0
++/sys/devices(/platform)?/soc/[a-f0-9]+.ufshc/clkgate_enable                       u:object_r:sysfs_scsi_host:s0
++/sys/devices/virtual/graphics/fb([0-3])+/idle_state                               u:object_r:sysfs_graphics:s0
+diff --git a/qcom/vendor/fm_app.te b/qcom/vendor/fm_app.te
+new file mode 100644
+index 0000000..c37e8f5
+--- /dev/null
++++ b/qcom/vendor/fm_app.te
+@@ -0,0 +1 @@
++get_prop(vendor_fm_app, vendor_fm_radio_app_prop)
+diff --git a/qcom/vendor/genfs_contexts b/qcom/vendor/genfs_contexts
+index 0e1f3a5..28a5ab2 100644
+--- a/qcom/vendor/genfs_contexts
++++ b/qcom/vendor/genfs_contexts
+@@ -1 +1,13 @@
++genfscon proc /sys/kernel/sched_busy_hyst_ns                    u:object_r:proc_sched:s0
++genfscon proc /sys/kernel/sched_busy_hysteresis_enable_cpus     u:object_r:proc_sched:s0
++genfscon proc /sys/kernel/sched_energy_aware                    u:object_r:proc_sched:s0
++genfscon proc /sys/kernel/sched_min_task_util_for_boost         u:object_r:proc_sched:s0
++genfscon proc /sys/kernel/sched_min_task_util_for_colocation    u:object_r:proc_sched:s0
++genfscon proc /sys/kernel/sched_prefer_spread                   u:object_r:proc_sched:s0
++genfscon proc /sys/walt/sched_busy_hyst_ns                      u:object_r:proc_sched:s0
++genfscon proc /sys/walt/sched_busy_hysteresis_enable_cpus       u:object_r:proc_sched:s0
++genfscon proc /sys/walt/sched_min_task_util_for_boost           u:object_r:proc_sched:s0
++genfscon proc /sys/walt/sched_min_task_util_for_colocation      u:object_r:proc_sched:s0
++genfscon proc /sys/walt/sched_min_task_util_for_uclamp          u:object_r:proc_sched:s0
++
+ genfscon sysfs /devices/soc0/serial_number               u:object_r:sysfs_socinfo_sensitive:s0
+diff --git a/qcom/vendor/hal_gnss_qti.te b/qcom/vendor/hal_gnss_qti.te
+index 1b9e615..4e914a2 100644
+--- a/qcom/vendor/hal_gnss_qti.te
++++ b/qcom/vendor/hal_gnss_qti.te
+@@ -1,2 +1,2 @@
+ # xtra-daemon control
+-dontaudit hal_gnss_qti xtra_control_prop:file read;
++dontaudit hal_gnss_qti xtra_control_prop:file r_file_perms;
+diff --git a/qcom/vendor/hal_lineage_health_default.te b/qcom/vendor/hal_lineage_health_default.te
+new file mode 100644
+index 0000000..26de236
+--- /dev/null
++++ b/qcom/vendor/hal_lineage_health_default.te
+@@ -0,0 +1,2 @@
++rw_dir_file(hal_lineage_health_default, sysfs_battery_supply)
++rw_dir_file(hal_lineage_health_default, sysfs_usb_supply)
+diff --git a/qcom/vendor/hal_lineage_livedisplay_qti.te b/qcom/vendor/hal_lineage_livedisplay_qti.te
+new file mode 100644
+index 0000000..4950726
+--- /dev/null
++++ b/qcom/vendor/hal_lineage_livedisplay_qti.te
+@@ -0,0 +1,14 @@
++type hal_lineage_livedisplay_qti, domain;
++hal_server_domain(hal_lineage_livedisplay_qti, hal_lineage_livedisplay)
++
++type hal_lineage_livedisplay_qti_exec, exec_type, vendor_file_type, file_type;
++init_daemon_domain(hal_lineage_livedisplay_qti)
++
++binder_call(hal_lineage_livedisplay_qti, servicemanager)
++
++# Allow LiveDisplay HAL's default implementation to use vendor-binder service
++vndbinder_use(hal_lineage_livedisplay_qti)
++
++# Allow LiveDisplay to store files under /data/vendor/display and access them
++allow hal_lineage_livedisplay_qti display_vendor_data_file:dir rw_dir_perms;
++allow hal_lineage_livedisplay_qti display_vendor_data_file:file create_file_perms;
+diff --git a/qcom/vendor/hal_perf_default.te b/qcom/vendor/hal_perf_default.te
+index b517884..9125357 100644
+--- a/qcom/vendor/hal_perf_default.te
++++ b/qcom/vendor/hal_perf_default.te
+@@ -1 +1,3 @@
+ r_dir_file(hal_perf_default, hal_power_default)
++
++rw_dir_file(hal_perf_default, proc_sched)
+diff --git a/qcom/vendor/hal_power_default.te b/qcom/vendor/hal_power_default.te
+new file mode 100644
+index 0000000..969819c
+--- /dev/null
++++ b/qcom/vendor/hal_power_default.te
+@@ -0,0 +1,6 @@
++# To do powerhint on nodes defined in powerhint.json
++rw_dir_file(hal_power_default, proc_sched)
++rw_dir_file(hal_power_default, sysfs_devfreq)
++rw_dir_file(hal_power_default, sysfs_graphics)
++rw_dir_file(hal_power_default, sysfs_kgsl)
++rw_dir_file(hal_power_default, sysfs_scsi_host)
+diff --git a/qcom/vendor/init.te b/qcom/vendor/init.te
+new file mode 100644
+index 0000000..d491723
+--- /dev/null
++++ b/qcom/vendor/init.te
+@@ -0,0 +1,3 @@
++recovery_only(`
++  allow init firmware_file:filesystem unmount;
++')
+diff --git a/qcom/vendor/location.te b/qcom/vendor/location.te
+index 76b8ff3..fcb1a48 100644
+--- a/qcom/vendor/location.te
++++ b/qcom/vendor/location.te
+@@ -1,2 +1,4 @@
+ # xtra-daemon control
+ get_prop(location_domain, xtra_control_prop)
++
++dontaudit location_domain sysfs_socinfo_sensitive:file r_file_perms;
+diff --git a/qcom/vendor/postinstall.te b/qcom/vendor/postinstall.te
+new file mode 100644
+index 0000000..d8b0e2e
+--- /dev/null
++++ b/qcom/vendor/postinstall.te
+@@ -0,0 +1,3 @@
++allow postinstall block_device:dir search;
++
++allow postinstall custom_ab_block_device:blk_file r_file_perms;
+diff --git a/qcom/vendor/vendor_init.te b/qcom/vendor/vendor_init.te
+new file mode 100644
+index 0000000..98ae89e
+--- /dev/null
++++ b/qcom/vendor/vendor_init.te
+@@ -0,0 +1 @@
++set_prop(vendor_init, vendor_ssr_prop)

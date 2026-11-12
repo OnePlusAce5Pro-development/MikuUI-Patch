@@ -1,0 +1,26 @@
+From 7f3a587ac621fe40b8856c00a5bc959c3633c9dd Mon Sep 17 00:00:00 2001
+From: Michael Bestas <mkbestas@lineageos.org>
+Date: Fri, 10 Jul 2026 09:55:14 +0300
+Subject: [PATCH] sepolicy: Resolve toolbox zram denials
+
+As seen on Pixel CP2A.260705.006 update.
+
+Change-Id: I5315320a40791d24b434ed906691f4d07d873f43
+---
+ private/toolbox.te | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/private/toolbox.te b/private/toolbox.te
+index 035abbd..4389485 100644
+--- a/private/toolbox.te
++++ b/private/toolbox.te
+@@ -32,7 +32,8 @@ allow toolbox system_data_file:file { getattr unlink };
+ # When init.rc rm -rf's /data/per_boot at boot, toolbox needs
+ # to be able to transitively delete mmd's /data/per_boot/zram
+ # directory if it present.
+-allow toolbox zram_data_file:dir { rmdir r_dir_perms };
++allow toolbox zram_data_file:dir create_dir_perms;
++allow toolbox zram_data_file:file create_file_perms;
+ 
+ # For Zram
+ allow toolbox per_boot_file:dir create_dir_perms;

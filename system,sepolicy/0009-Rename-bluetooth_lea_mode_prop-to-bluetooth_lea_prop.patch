@@ -1,0 +1,28 @@
+From 8b8ff8bdcf494945e0e344501ec5b2c56ef43f6f Mon Sep 17 00:00:00 2001
+From: Jyun LuoLai <jyunluolai@google.com>
+Date: Thu, 15 May 2025 01:41:10 -0700
+Subject: [PATCH] Rename bluetooth_lea_mode_prop to bluetooth_lea_prop
+
+Bug: 341846879
+Test: m .
+Change-Id: Ibbfefec518c9454be03e97a965d536c77f47938b
+Flag: EXEMPT modify the system property access.
+---
+ private/platform_app_all.te | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/private/platform_app_all.te b/private/platform_app_all.te
+index fb9ba3e..17f6696 100644
+--- a/private/platform_app_all.te
++++ b/private/platform_app_all.te
+@@ -122,8 +122,8 @@ get_prop(platform_app_all, qemu_hw_prop)
+ # allow platform apps to read sys.boot.reason.last
+ get_prop(platform_app_all, last_boot_reason_prop)
+ 
+-# allow systemui access to bluetooth_lea_mode_prop
+-get_prop(platform_app, bluetooth_lea_mode_prop)
++# allow systemui access to bluetooth_lea_prop
++get_prop(platform_app, bluetooth_lea_prop)
+ 
+ # allow platform apps to create symbolic link
+ allow platform_app_all app_data_file:lnk_file create_file_perms;

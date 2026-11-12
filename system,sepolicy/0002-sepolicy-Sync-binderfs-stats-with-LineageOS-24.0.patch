@@ -1,0 +1,64 @@
+From 7f08ca273b206697e02bb22ab23957f5cdf80808 Mon Sep 17 00:00:00 2001
+From: Li Li <dualli@google.com>
+Date: Thu, 2 Nov 2023 12:00:00 -0700
+Subject: [PATCH] sepolicy: Sync binderfs stats with LineageOS 24.0
+
+binderfs_logs_stats was added after the API 34 freeze and is not part of
+the LineageOS 24.0 prebuilt policy, drop it from the prebuilt policy.
+
+Change-Id: I5c3b30b1b023116295dc9c25840c98ef5104f305
+---
+ prebuilts/api/34.0/private/genfs_contexts   | 1 -
+ prebuilts/api/34.0/private/system_server.te | 4 ----
+ prebuilts/api/34.0/public/dumpstate.te      | 1 -
+ prebuilts/api/34.0/public/file.te           | 1 -
+ 4 files changed, 7 deletions(-)
+
+diff --git a/prebuilts/api/34.0/private/genfs_contexts b/prebuilts/api/34.0/private/genfs_contexts
+index c0a15f7..759ac38 100644
+--- a/prebuilts/api/34.0/private/genfs_contexts
++++ b/prebuilts/api/34.0/private/genfs_contexts
+@@ -385,7 +385,6 @@ genfscon binder /hwbinder u:object_r:hwbinder_device:s0
+ genfscon binder /vndbinder u:object_r:vndbinder_device:s0
+ genfscon binder /binder_logs u:object_r:binderfs_logs:s0
+ genfscon binder /binder_logs/proc u:object_r:binderfs_logs_proc:s0
+-genfscon binder /binder_logs/stats u:object_r:binderfs_logs_stats:s0
+ genfscon binder /features u:object_r:binderfs_features:s0
+ 
+ genfscon inotifyfs / u:object_r:inotify:s0
+diff --git a/prebuilts/api/34.0/private/system_server.te b/prebuilts/api/34.0/private/system_server.te
+index c7d1b66..aff4a0a 100644
+--- a/prebuilts/api/34.0/private/system_server.te
++++ b/prebuilts/api/34.0/private/system_server.te
+@@ -1545,7 +1545,3 @@ neverallow { domain -init -system_server } font_data_file:dir no_w_dir_perms;
+ 
+ # Allow system server to set dynamic ART properties.
+ set_prop(system_server, dalvik_dynamic_config_prop)
+-
+-# Allow system server to read binderfs
+-allow system_server binderfs_logs:dir r_dir_perms;
+-allow system_server binderfs_logs_stats:file r_file_perms;
+diff --git a/prebuilts/api/34.0/public/dumpstate.te b/prebuilts/api/34.0/public/dumpstate.te
+index 3abdd64..58d6efa 100644
+--- a/prebuilts/api/34.0/public/dumpstate.te
++++ b/prebuilts/api/34.0/public/dumpstate.te
+@@ -376,7 +376,6 @@ allow dumpstate snapshotctl_log_data_file:file r_file_perms;
+ allow dumpstate binderfs_logs:dir r_dir_perms;
+ allow dumpstate binderfs_logs:file r_file_perms;
+ allow dumpstate binderfs_logs_proc:file r_file_perms;
+-allow dumpstate binderfs_logs_stats:file r_file_perms;
+ 
+ use_apex_info(dumpstate)
+ 
+diff --git a/prebuilts/api/34.0/public/file.te b/prebuilts/api/34.0/public/file.te
+index 0ce5c34..7cfd8ad 100644
+--- a/prebuilts/api/34.0/public/file.te
++++ b/prebuilts/api/34.0/public/file.te
+@@ -7,7 +7,6 @@ type proc, fs_type, proc_type;
+ type binderfs, fs_type;
+ type binderfs_logs, fs_type;
+ type binderfs_logs_proc, fs_type;
+-type binderfs_logs_stats, fs_type;
+ type binderfs_features, fs_type;
+ # Security-sensitive proc nodes that should not be writable to most.
+ type proc_security, fs_type, proc_type;

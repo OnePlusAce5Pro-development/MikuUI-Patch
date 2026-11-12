@@ -1,0 +1,195 @@
+From 70ef59d10cc2855ad5702c3d6733ca1e16f622b0 Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Wed, 19 Feb 2025 21:33:11 +0000
+Subject: [PATCH 9/9] Biometrics: Hook up support for halHandlesDisplayTouches
+ prop
+
+Fingerprint AIDL interface supports boolean type sensor prop
+halHandlesDisplayTouches, that defines whether the HAL is responsible
+for detecting and processing of display touches [1].
+
+If the value is false, the framework was supposed to be responsible for
+handling the display touch events and passing them down to the HAL by
+using ISession#onPointerDown and ISession#onPointerUp. If the value is
+true, the framework was not supposed to notify the HAL about touch
+events.
+
+Currently, Android framework is not aware of this prop, so hook it up
+for the expected outcome.
+
+[1] https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/biometrics/fingerprint/aidl/android/hardware/biometrics/fingerprint/SensorProps.aidl?q=halHandlesDisplayTouches
+
+Test: Build and verify no regression authenticating or registering
+fingerprints with udfps AIDL HAL.
+Change-Id: I56166950c6ef7cbb0c4ac2c0b7998e4a909d4af9
+
+Change-Id: I787b1644e02248b1d5f228698281efa1244227e8
+---
+ .../fingerprint/FingerprintSensorPropertiesInternal.java  | 8 +++++++-
+ .../hardware/fingerprint/HidlFingerprintSensorConfig.java | 1 +
+ .../hardware/fingerprint/FingerprintManagerTest.java      | 1 +
+ .../data/repository/FingerprintRepositoryImplTest.kt      | 1 +
+ .../data/repository/FingerprintPropertyRepository.kt      | 2 ++
+ .../java/com/android/server/biometrics/AuthService.java   | 1 +
+ .../sensors/fingerprint/aidl/FingerprintProvider.java     | 6 ++++++
+ .../biometrics/sensors/fingerprint/aidl/Sensor.java       | 1 +
+ 8 files changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/core/java/android/hardware/fingerprint/FingerprintSensorPropertiesInternal.java b/core/java/android/hardware/fingerprint/FingerprintSensorPropertiesInternal.java
+index 9025fe5f8..123c8efc2 100644
+--- a/core/java/android/hardware/fingerprint/FingerprintSensorPropertiesInternal.java
++++ b/core/java/android/hardware/fingerprint/FingerprintSensorPropertiesInternal.java
+@@ -41,6 +41,7 @@ public class FingerprintSensorPropertiesInternal extends SensorPropertiesInterna
+      */
+     public final @FingerprintSensorProperties.SensorType int sensorType;
+     public final boolean halControlsIllumination;
++    public final boolean halHandlesDisplayTouches;
+ 
+     private final List<SensorLocationInternal> mSensorLocations;
+ 
+@@ -49,6 +50,7 @@ public class FingerprintSensorPropertiesInternal extends SensorPropertiesInterna
+             @NonNull List<ComponentInfoInternal> componentInfo,
+             @FingerprintSensorProperties.SensorType int sensorType,
+             boolean halControlsIllumination,
++            boolean halHandlesDisplayTouches,
+             boolean resetLockoutRequiresHardwareAuthToken,
+             @NonNull List<SensorLocationInternal> sensorLocations) {
+         // IBiometricsFingerprint@2.1 handles lockout in the framework, so the challenge is not
+@@ -59,6 +61,7 @@ public class FingerprintSensorPropertiesInternal extends SensorPropertiesInterna
+             resetLockoutRequiresHardwareAuthToken, false /* resetLockoutRequiresChallenge */);
+         this.sensorType = sensorType;
+         this.halControlsIllumination = halControlsIllumination;
++        this.halHandlesDisplayTouches = halHandlesDisplayTouches;
+         this.mSensorLocations = List.copyOf(sensorLocations);
+     }
+ 
+@@ -72,7 +75,8 @@ public class FingerprintSensorPropertiesInternal extends SensorPropertiesInterna
+             boolean resetLockoutRequiresHardwareAuthToken) {
+         // TODO(b/179175438): Value should be provided from the HAL
+         this(sensorId, strength, maxEnrollmentsPerUser, componentInfo, sensorType,
+-                false /* halControlsIllumination */, resetLockoutRequiresHardwareAuthToken,
++                false /* halControlsIllumination */, false /* halHandlesDisplayTouches */,
++                resetLockoutRequiresHardwareAuthToken,
+                 List.of(new SensorLocationInternal("" /* displayId */, 540 /* sensorLocationX */,
+                         1636 /* sensorLocationY */, 130 /* sensorRadius */)));
+     }
+@@ -81,6 +85,7 @@ public class FingerprintSensorPropertiesInternal extends SensorPropertiesInterna
+         super(in);
+         sensorType = in.readInt();
+         halControlsIllumination = in.readBoolean();
++        halHandlesDisplayTouches = in.readBoolean();
+         mSensorLocations = in.createTypedArrayList(SensorLocationInternal.CREATOR);
+     }
+ 
+@@ -107,6 +112,7 @@ public class FingerprintSensorPropertiesInternal extends SensorPropertiesInterna
+         super.writeToParcel(dest, flags);
+         dest.writeInt(sensorType);
+         dest.writeBoolean(halControlsIllumination);
++        dest.writeBoolean(halHandlesDisplayTouches);
+         dest.writeTypedList(mSensorLocations);
+     }
+ 
+diff --git a/core/java/android/hardware/fingerprint/HidlFingerprintSensorConfig.java b/core/java/android/hardware/fingerprint/HidlFingerprintSensorConfig.java
+index 9febcab61..95721b765 100644
+--- a/core/java/android/hardware/fingerprint/HidlFingerprintSensorConfig.java
++++ b/core/java/android/hardware/fingerprint/HidlFingerprintSensorConfig.java
+@@ -76,6 +76,7 @@ public final class HidlFingerprintSensorConfig extends SensorProps {
+         commonProps.maxEnrollmentsPerUser = context.getResources().getInteger(
+                 R.integer.config_fingerprintMaxTemplatesPerUser);
+         halControlsIllumination = false;
++        halHandlesDisplayTouches = false;
+         sensorLocations = new SensorLocation[1];
+ 
+         // Non-empty workaroundLocations indicates that the sensor is SFPS.
+diff --git a/core/tests/coretests/src/android/hardware/fingerprint/FingerprintManagerTest.java b/core/tests/coretests/src/android/hardware/fingerprint/FingerprintManagerTest.java
+index c3ea7d38e..8bed63619 100644
+--- a/core/tests/coretests/src/android/hardware/fingerprint/FingerprintManagerTest.java
++++ b/core/tests/coretests/src/android/hardware/fingerprint/FingerprintManagerTest.java
+@@ -110,6 +110,7 @@ public class FingerprintManagerTest {
+                 new ArrayList<>() /* componentInfo */,
+                 FingerprintSensorProperties.TYPE_UNKNOWN,
+                 true /* halControlsIllumination */,
++                false /* halHandlesDisplayTouches */,
+                 true /* resetLockoutRequiresHardwareAuthToken */,
+                 new ArrayList<>() /* sensorLocations */));
+     }
+diff --git a/packages/SystemUI/multivalentTests/src/com/android/systemui/biometrics/data/repository/FingerprintRepositoryImplTest.kt b/packages/SystemUI/multivalentTests/src/com/android/systemui/biometrics/data/repository/FingerprintRepositoryImplTest.kt
+index ffabc83ab..d1ba7f84c 100644
+--- a/packages/SystemUI/multivalentTests/src/com/android/systemui/biometrics/data/repository/FingerprintRepositoryImplTest.kt
++++ b/packages/SystemUI/multivalentTests/src/com/android/systemui/biometrics/data/repository/FingerprintRepositoryImplTest.kt
+@@ -104,6 +104,7 @@ class FingerprintRepositoryImplTest : SysuiTestCase() {
+                         ),
+                         FingerprintSensorProperties.TYPE_REAR,
+                         false /* halControlsIllumination */,
++                        false /* halHandlesDisplayTouches */,
+                         true /* resetLockoutRequiresHardwareAuthToken */,
+                         listOf<SensorLocationInternal>(
+                             SensorLocationInternal(
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/data/repository/FingerprintPropertyRepository.kt b/packages/SystemUI/src/com/android/systemui/biometrics/data/repository/FingerprintPropertyRepository.kt
+index 3924e792b..5179b8447 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/data/repository/FingerprintPropertyRepository.kt
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/data/repository/FingerprintPropertyRepository.kt
+@@ -186,6 +186,7 @@ constructor(
+                 listOf<ComponentInfoInternal>(),
+                 FingerprintSensorProperties.TYPE_UNKNOWN,
+                 false /* halControlsIllumination */,
++                false /* halHandlesDisplayTouches */,
+                 true /* resetLockoutRequiresHardwareAuthToken */,
+                 listOf<SensorLocationInternal>(SensorLocationInternal.DEFAULT),
+             )
+@@ -197,6 +198,7 @@ constructor(
+                 listOf<ComponentInfoInternal>(),
+                 FingerprintSensorProperties.TYPE_UNKNOWN,
+                 false /* halControlsIllumination */,
++                false /* halHandlesDisplayTouches */,
+                 true /* resetLockoutRequiresHardwareAuthToken */,
+                 listOf<SensorLocationInternal>(SensorLocationInternal.DEFAULT),
+             )
+diff --git a/services/core/java/com/android/server/biometrics/AuthService.java b/services/core/java/com/android/server/biometrics/AuthService.java
+index 38216db45..5314437f5 100644
+--- a/services/core/java/com/android/server/biometrics/AuthService.java
++++ b/services/core/java/com/android/server/biometrics/AuthService.java
+@@ -1201,6 +1201,7 @@ public class AuthService extends SystemService {
+             return new FingerprintSensorPropertiesInternal(sensorId,
+                     Utils.authenticatorStrengthToPropertyStrength(strength), maxEnrollmentsPerUser,
+                     componentInfo, sensorType, true /* halControlsIllumination */,
++                    false /* halHandlesDisplayTouches */,
+                     resetLockoutRequiresHardwareAuthToken,
+                     List.of(new SensorLocationInternal("" /* display */, udfpsProps[0],
+                             udfpsProps[1], udfpsProps[2])));
+diff --git a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
+index b28676829..fb4b087f0 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
++++ b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
+@@ -755,6 +755,9 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+ 
+     @Override
+     public void onPointerDown(long requestId, int sensorId, PointerContext pc) {
++        if (mFingerprintSensors.get(sensorId).getSensorProperties().halHandlesDisplayTouches) {
++            return;
++        }
+         mFingerprintSensors.get(sensorId).getScheduler().getCurrentClientIfMatches(
+                 requestId, (client) -> {
+                     if (!(client instanceof Udfps)) {
+@@ -767,6 +770,9 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+ 
+     @Override
+     public void onPointerUp(long requestId, int sensorId, PointerContext pc) {
++        if (mFingerprintSensors.get(sensorId).getSensorProperties().halHandlesDisplayTouches) {
++            return;
++        }
+         mFingerprintSensors.get(sensorId).getScheduler().getCurrentClientIfMatches(
+                 requestId, (client) -> {
+                     if (!(client instanceof Udfps)) {
+diff --git a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java
+index 42842823a..99b2e47be 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java
++++ b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/Sensor.java
+@@ -225,6 +225,7 @@ public class Sensor {
+                 componentInfo,
+                 prop.sensorType,
+                 prop.halControlsIllumination,
++                prop.halHandlesDisplayTouches,
+                 resetLockoutRequiresHardwareAuthToken,
+                 !workaroundLocations.isEmpty() ? workaroundLocations :
+                         Arrays.stream(prop.sensorLocations).map(location ->

@@ -1,0 +1,27 @@
+From fb9927ddbb88bfe98060467489a1d91fb77caa88 Mon Sep 17 00:00:00 2001
+From: Randall Huang <huangrandall@google.com>
+Date: Thu, 20 Apr 2023 12:00:00 -0700
+Subject: [PATCH] sepolicy: Sync fastbootd devpts with LineageOS 24.0
+
+The fastbootd devpts permission was added after the API 34 freeze and is
+not part of the LineageOS 24.0 prebuilt policy, drop it.
+
+Change-Id: I7787a59c414987377b76c879fd717a788fe70dc1
+---
+ prebuilts/api/34.0/public/fastbootd.te | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/prebuilts/api/34.0/public/fastbootd.te b/prebuilts/api/34.0/public/fastbootd.te
+index 2c34c42..8452b97 100644
+--- a/prebuilts/api/34.0/public/fastbootd.te
++++ b/prebuilts/api/34.0/public/fastbootd.te
+@@ -117,9 +117,6 @@ recovery_only(`
+   allow fastbootd gsi_metadata_file_type:dir search;
+   allow fastbootd ota_metadata_file:dir rw_dir_perms;
+   allow fastbootd ota_metadata_file:file create_file_perms;
+-
+-  # Fastbootd uses liblogwrap to write mke2fs logs to kmsg, liblogwrap requires devpts.
+-  allow fastbootd devpts:chr_file rw_file_perms;
+ ')
+ 
+ ###

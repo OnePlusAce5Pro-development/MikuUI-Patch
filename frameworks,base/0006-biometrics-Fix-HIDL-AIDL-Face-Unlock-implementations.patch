@@ -1,0 +1,92 @@
+From ed9444700396d99c30a6fd6551bf0ab503532273 Mon Sep 17 00:00:00 2001
+From: hecker <118846180+its-hecker@users.noreply.github.com>
+Date: Wed, 28 Oct 2026 19:23:01 -0400
+Subject: [PATCH 6/9] biometrics: Fix HIDL->AIDL Face Unlock implementations
+
+- FaceProvider: register a new HIDL sensor with USER_NULL instead of
+  eagerly connecting its lazy session, which raced sensor registration.
+- HidlToAidlSensorAdapter: create the HIDL session (and its callback)
+  before activating a user on the HAL.
+- HidlToAidlSessionAdapter: complete a still-shared challenge with
+  onChallengeRevoked() instead of onError() so the scheduler queue drains.
+- HidlToAidlSessionAdapter: translate AIDL enabled-features to HIDL
+  disabledFeatures correctly so diverse-pose enrollment stays enabled.
+
+Assisted-by: LLM
+Co-authored-by: Nolen Johnson <johnsonnolen@gmail.com>
+Change-Id: I8ed5dbbabe53733aed8135426629d6f480e70db8
+---
+ .../sensors/face/aidl/FaceProvider.java          |  5 +++--
+ .../face/hidl/HidlToAidlSensorAdapter.java       |  6 +++++-
+ .../face/hidl/HidlToAidlSessionAdapter.java      | 16 +++++++++++++---
+ 3 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/services/core/java/com/android/server/biometrics/sensors/face/aidl/FaceProvider.java b/services/core/java/com/android/server/biometrics/sensors/face/aidl/FaceProvider.java
+index a70664cfe..547193f68 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/face/aidl/FaceProvider.java
++++ b/services/core/java/com/android/server/biometrics/sensors/face/aidl/FaceProvider.java
+@@ -259,8 +259,9 @@ public class FaceProvider implements IBinder.DeathRecipient, ServiceProvider {
+                             mContext.getOpPackageName());
+                 });
+         sensor.init(mLockoutResetDispatcher, this);
+-        final int userId = sensor.getLazySession().get() == null ? UserHandle.USER_NULL :
+-                sensor.getLazySession().get().getUserId();
++        // A new HIDL sensor has no active user yet. Connecting its lazy session here
++        // can post cleanup to FaceHandler before addSensor publishes the sensor.
++        final int userId = UserHandle.USER_NULL;
+         mFaceSensors.addSensor(sensorId, sensor, userId,
+                 new SynchronousUserSwitchObserver() {
+                     @Override
+diff --git a/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSensorAdapter.java b/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSensorAdapter.java
+index 018974848..20e42f84e 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSensorAdapter.java
++++ b/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSensorAdapter.java
+@@ -253,7 +253,11 @@ public class HidlToAidlSensorAdapter extends Sensor implements IHwBinder.DeathRe
+     }
+ 
+     private FaceUpdateActiveUserClient getFaceUpdateActiveUserClient(int userId) {
+-        return new FaceUpdateActiveUserClient(getContext(), this::getIBiometricsFace,
++        return new FaceUpdateActiveUserClient(getContext(), () -> {
++                    // Register the HIDL callback before the HAL activates a user.
++                    getSession();
++                    return getIBiometricsFace();
++                },
+                 mUserStartedCallback, userId, TAG, getSensorProperties().sensorId,
+                 BiometricLogger.ofUnknown(getContext(), getHandler()), getBiometricContext(),
+                 !getFaceUtilsInstance().getBiometricsForUser(getContext(), userId).isEmpty(),
+diff --git a/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSessionAdapter.java b/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSessionAdapter.java
+index 45d0cfec9..ad35412fe 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSessionAdapter.java
++++ b/services/core/java/com/android/server/biometrics/sensors/face/hidl/HidlToAidlSessionAdapter.java
+@@ -110,8 +110,9 @@ public class HidlToAidlSessionAdapter implements ISession {
+         if (!shouldRevoke) {
+             Slog.w(TAG, "scheduleRevokeChallenge skipped - challenge still in use: "
+                     + mGeneratedChallengeCount);
+-            mHidlToAidlCallbackConverter.onError(0 /* deviceId */, mUserId,
+-                    BiometricFaceConstants.FACE_ERROR_UNABLE_TO_PROCESS, 0 /* vendorCode */);
++            // Release this client's reference without invalidating another client's challenge.
++            // FaceRevokeChallengeClient needs its completion callback to advance the queue.
++            mHidlToAidlCallbackConverter.onChallengeRevoked(challenge);
+             return;
+         }
+         mGenerateChallengeCreatedAt = INVALID_VALUE;
+@@ -135,9 +136,18 @@ public class HidlToAidlSessionAdapter implements ISession {
+             token.add(b);
+         }
+         final ArrayList<Integer> disabledFeatures = new ArrayList<>();
++        boolean requireDiversePoses = false;
+         for (byte b: features) {
+-            disabledFeatures.add(AidlConversionUtils.convertAidlToFrameworkFeature(b));
++            final int feature = AidlConversionUtils.convertAidlToFrameworkFeature(b);
++            if (feature == BiometricFaceConstants.FEATURE_REQUIRE_REQUIRE_DIVERSITY) {
++                requireDiversePoses = true;
++            }
++        }
++        // AIDL requests enabled features; HIDL expects features to disable.
++        if (!requireDiversePoses) {
++            disabledFeatures.add(BiometricFaceConstants.FEATURE_REQUIRE_REQUIRE_DIVERSITY);
+         }
++        // Preserve HIDL's attention default: the AIDL client does not request it here.
+         mSession.get().enroll(token, ENROLL_TIMEOUT_SEC, disabledFeatures);
+         return new Cancellation();
+     }

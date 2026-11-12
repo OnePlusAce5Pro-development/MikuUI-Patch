@@ -1,0 +1,24 @@
+From efb49605b723b8900e77d526e516da227092123f Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Thu, 31 Aug 2023 22:01:25 +0100
+Subject: [PATCH 2/2] overlay: Do not overwrite default config_pluginAllowlist
+
+Make sure to keep the default entry.
+
+Change-Id: I41a084a79ba4c1501c2b607e51c3f63eb745f58b
+---
+ overlay/MikuSystemUIOverlay/res/values/config.xml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/overlay/MikuSystemUIOverlay/res/values/config.xml b/overlay/MikuSystemUIOverlay/res/values/config.xml
+index 63811f7..ac44e48 100644
+--- a/overlay/MikuSystemUIOverlay/res/values/config.xml
++++ b/overlay/MikuSystemUIOverlay/res/values/config.xml
+@@ -17,6 +17,7 @@
+ <resources>
+     <!-- SystemUI Plugins that can be loaded on user builds. -->
+     <string-array name="config_pluginAllowlist" translatable="false">
++        <item>com.android.systemui</item>
+         <item>com.android.systemui.plugin.globalactions.wallet</item>
+         <item>org.lineageos.settings.device</item>
+     </string-array>

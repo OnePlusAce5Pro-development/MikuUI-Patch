@@ -1,0 +1,186 @@
+From a661fe0b82dee150246ae0b8f91307b1ca5183ff Mon Sep 17 00:00:00 2001
+From: pjgowtham <pjgowtham@gmail.com>
+Date: Sun, 22 Jun 2025 11:00:08 +0530
+Subject: [PATCH 4/9] UdfpsHelper: Track brightness mirror to hide/show dim
+ layer
+
+This provides a much deeper integration with UDFPS dim layer and the new
+brightness slider such that we don't need to look for APIs that can
+track temporary brightness. That is because when the brightness mirror
+is shown, there is no necessity for the UDFPS dim layer to be present.
+This change also isn't functional with the legacy slider.
+
+It also fixes the issue where the dim layer is hidden with QS expansion
+-> Device Control where the alternate bouncer is brought up.
+
+Test: Ensure that appropriate transparency of the dim layer is set when
+dragging or selecting the preferred brightness with the slider.
+
+Change-Id: I53f78cbcfd3b42a3b5dbe6110424687ebfac102d
+---
+ .../systemui/biometrics/UdfpsController.java  |  5 +++
+ .../biometrics/UdfpsControllerOverlay.kt      |  5 ++-
+ .../systemui/biometrics/UdfpsHelper.kt        | 33 ++++++++-----------
+ 3 files changed, 22 insertions(+), 21 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java
+index 23f0ed63a..ec7ee4d3e 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java
+@@ -89,6 +89,7 @@ import com.android.systemui.biometrics.ui.viewmodel.DeviceEntryUdfpsTouchOverlay
+ import com.android.systemui.biometrics.ui.viewmodel.PromptUdfpsTouchOverlayViewModel;
+ import com.android.systemui.bouncer.domain.interactor.AlternateBouncerInteractor;
+ import com.android.systemui.bouncer.domain.interactor.PrimaryBouncerInteractor;
++import com.android.systemui.brightness.domain.interactor.BrightnessMirrorShowingInteractor;
+ import com.android.systemui.dagger.SysUISingleton;
+ import com.android.systemui.dagger.qualifiers.Application;
+ import com.android.systemui.dagger.qualifiers.Main;
+@@ -188,6 +189,7 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+     @NonNull private final AlternateBouncerInteractor mAlternateBouncerInteractor;
+     @NonNull private final UdfpsOverlayInteractor mUdfpsOverlayInteractor;
+     @NonNull private final PowerInteractor mPowerInteractor;
++    @NonNull private final BrightnessMirrorShowingInteractor mBrightnessMirrorShowingInteractor;
+     @NonNull private final CoroutineScope mScope;
+     @NonNull private final InputManager mInputManager;
+     @NonNull private final SelectedUserInteractor mSelectedUserInteractor;
+@@ -330,6 +332,7 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+                         mShadeInteractor,
+                         mUdfpsOverlayInteractor,
+                         mPowerInteractor,
++                        mBrightnessMirrorShowingInteractor,
+                         mScope,
+                         mSceneInteractorLazy
+                     )));
+@@ -728,6 +731,7 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+             Lazy<PromptUdfpsTouchOverlayViewModel> promptUdfpsTouchOverlayViewModel,
+             @NonNull UdfpsOverlayInteractor udfpsOverlayInteractor,
+             @NonNull PowerInteractor powerInteractor,
++            @NonNull BrightnessMirrorShowingInteractor brightnessMirrorShowingInteractor,
+             @Application CoroutineScope scope,
+             UserActivityNotifier userActivityNotifier,
+             Lazy<WakefulnessLifecycle> wakefulnessLifecycle,
+@@ -774,6 +778,7 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+         mAlternateBouncerInteractor = alternateBouncerInteractor;
+         mUdfpsOverlayInteractor = udfpsOverlayInteractor;
+         mPowerInteractor = powerInteractor;
++        mBrightnessMirrorShowingInteractor = brightnessMirrorShowingInteractor;
+         mScope = scope;
+         mInputManager = inputManager;
+         mSelectedUserInteractor = selectedUserInteractor;
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsControllerOverlay.kt b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsControllerOverlay.kt
+index 6261be92c..9071987db 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsControllerOverlay.kt
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsControllerOverlay.kt
+@@ -50,6 +50,7 @@ import com.android.systemui.biometrics.ui.view.UdfpsTouchOverlay
+ import com.android.systemui.biometrics.ui.viewmodel.DefaultUdfpsTouchOverlayViewModel
+ import com.android.systemui.biometrics.ui.viewmodel.DeviceEntryUdfpsTouchOverlayViewModel
+ import com.android.systemui.biometrics.ui.viewmodel.PromptUdfpsTouchOverlayViewModel
++import com.android.systemui.brightness.domain.interactor.BrightnessMirrorShowingInteractor
+ import com.android.systemui.dagger.qualifiers.Application
+ import com.android.systemui.keyguard.domain.interactor.KeyguardTransitionInteractor
+ import com.android.systemui.keyguard.shared.model.KeyguardState
+@@ -96,6 +97,7 @@ constructor(
+     private val shadeInteractor: ShadeInteractor,
+     private val udfpsOverlayInteractor: UdfpsOverlayInteractor,
+     private val powerInteractor: PowerInteractor,
++    private val brightnessMirrorShowingInteractor: BrightnessMirrorShowingInteractor,
+     @Application private val scope: CoroutineScope,
+     sceneInteractor: Lazy<SceneInteractor>,
+ ) {
+@@ -144,7 +146,8 @@ constructor(
+     )
+ 
+     private val udfpsHelper: UdfpsHelper? = if (useFrameworkDimming) {
+-        UdfpsHelper(context, windowManager, shadeInteractor, requestReason)
++        UdfpsHelper(context, windowManager, shadeInteractor, requestReason,
++                brightnessMirrorShowingInteractor)
+     } else {
+         null
+     }
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsHelper.kt b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsHelper.kt
+index 48b3c64ec..af069676c 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsHelper.kt
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsHelper.kt
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (C) 2024 The LineageOS Project
++ * Copyright (C) 2024-2025 The LineageOS Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -31,6 +31,7 @@ import android.view.WindowManager
+ import androidx.core.view.isVisible
+ import androidx.lifecycle.Lifecycle
+ import androidx.lifecycle.repeatOnLifecycle
++import com.android.systemui.brightness.domain.interactor.BrightnessMirrorShowingInteractor
+ import com.android.systemui.lifecycle.repeatWhenAttached
+ import com.android.systemui.shade.domain.interactor.ShadeInteractor
+ import kotlinx.coroutines.CoroutineScope
+@@ -49,6 +50,7 @@ class UdfpsHelper(
+     private val windowManager: WindowManager,
+     private val shadeInteractor: ShadeInteractor,
+     @RequestReason val requestReason: Int,
++    private val brightnessMirrorShowingInteractor: BrightnessMirrorShowingInteractor,
+     private var view: View = View(context).apply {
+         setBackgroundColor(Color.BLACK)
+         visibility = View.GONE
+@@ -56,7 +58,6 @@ class UdfpsHelper(
+ ) {
+     private val displayManager = context.getSystemService(DisplayManager::class.java)!!
+     private val isKeyguard = requestReason == REASON_AUTH_KEYGUARD
+-    private var newIsQsExpanded = false
+ 
+     private val currentBrightness: Float get() =
+         displayManager.getBrightness(Display.DEFAULT_DISPLAY)
+@@ -165,16 +166,22 @@ class UdfpsHelper(
+     fun addDimLayer() {
+         brightnessToAlpha()
+         windowManager.addView(view, dimLayoutParams)
++        displayManager.registerDisplayListener(
++            displayListener,
++            null,
++            DisplayManager.EVENT_TYPE_DISPLAY_BRIGHTNESS,
++        )
+     }
+ 
+     fun removeDimLayer() {
+         windowManager.removeView(view)
++        displayManager.unregisterDisplayListener(displayListener)
+     }
+ 
+     init {
+         view.repeatWhenAttached {
+             repeatOnLifecycle(Lifecycle.State.CREATED) {
+-                listenForQsExpansion(this)
++                listenForBrightnessMirror(this)
+ 
+                 if (isKeyguard) {
+                     listenForShadeTouchability(this)
+@@ -187,24 +194,10 @@ class UdfpsHelper(
+         }
+     }
+ 
+-    // We don't have ways to get temporary brightness when operating the brightness slider.
+-    // Therefore, the dim layer is hidden when the slider is expected to be utilized.
+-    private suspend fun listenForQsExpansion(scope: CoroutineScope): Job {
++    private suspend fun listenForBrightnessMirror(scope: CoroutineScope): Job {
+         return scope.launch {
+-            shadeInteractor.qsExpansion.collect { qsExpansion ->
+-                if (qsExpansion == 1f && !newIsQsExpanded) {
+-                    newIsQsExpanded = true
+-                    displayManager.registerDisplayListener(
+-                        displayListener,
+-                        null,
+-                        DisplayManager.EVENT_TYPE_DISPLAY_BRIGHTNESS,
+-                    )
+-                    view.isVisible = false
+-                } else if (qsExpansion == 0f && newIsQsExpanded) {
+-                    newIsQsExpanded = false
+-                    displayManager.unregisterDisplayListener(displayListener)
+-                    view.isVisible = true
+-                }
++            brightnessMirrorShowingInteractor.isShowing.collect {
++                view.isVisible = !it
+             }
+         }
+     }

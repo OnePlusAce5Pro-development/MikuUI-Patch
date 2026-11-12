@@ -1,0 +1,133 @@
+From 1f0f781cb165437113bcff90ad1f7b2bb6594651 Mon Sep 17 00:00:00 2001
+From: Bruno Martins <bgcngm@gmail.com>
+Date: Sat, 6 Jun 2026 12:00:00 +0000
+Subject: [PATCH] sepolicy: Restore exynos and libperfmgr policy
+
+Change-Id: Ia3b900be7c18eec961d67e197efd7666a756d19c
+---
+ exynos/sepolicy.mk                            | 23 +++++++++++++++++++
+ exynos/vendor/file_contexts                   |  2 ++
+ .../vendor/hal_lineage_livedisplay_exynos.te  | 14 +++++++++++
+ libperfmgr/sepolicy.mk                        |  2 ++
+ libperfmgr/vendor/hal_power_default.te        | 13 +++++++++++
+ libperfmgr/vendor/property.te                 |  2 ++
+ libperfmgr/vendor/property_contexts           |  2 ++
+ libperfmgr/vendor/vendor_init.te              |  2 ++
+ 8 files changed, 60 insertions(+)
+ create mode 100644 exynos/sepolicy.mk
+ create mode 100644 exynos/vendor/file_contexts
+ create mode 100644 exynos/vendor/hal_lineage_livedisplay_exynos.te
+ create mode 100644 libperfmgr/sepolicy.mk
+ create mode 100644 libperfmgr/vendor/hal_power_default.te
+ create mode 100644 libperfmgr/vendor/property.te
+ create mode 100644 libperfmgr/vendor/property_contexts
+ create mode 100644 libperfmgr/vendor/vendor_init.te
+
+diff --git a/exynos/sepolicy.mk b/exynos/sepolicy.mk
+new file mode 100644
+index 0000000..1b549d7
+--- /dev/null
++++ b/exynos/sepolicy.mk
+@@ -0,0 +1,23 @@
++#
++# This policy configuration will be used by all exynos products
++# that inherit from Lineage
++#
++
++ifeq ($(TARGET_COPY_OUT_VENDOR), vendor)
++ifeq ($(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE),)
++TARGET_USES_PREBUILT_VENDOR_SEPOLICY ?= true
++endif
++endif
++
++SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += \
++    device/miku/sepolicy/exynos/private
++
++ifeq ($(TARGET_USES_PREBUILT_VENDOR_SEPOLICY), true)
++SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += \
++    device/miku/sepolicy/exynos/dynamic \
++    device/miku/sepolicy/exynos/system
++else
++BOARD_VENDOR_SEPOLICY_DIRS += \
++    device/miku/sepolicy/exynos/dynamic \
++    device/miku/sepolicy/exynos/vendor
++endif
+diff --git a/exynos/vendor/file_contexts b/exynos/vendor/file_contexts
+new file mode 100644
+index 0000000..4eb46f7
+--- /dev/null
++++ b/exynos/vendor/file_contexts
+@@ -0,0 +1,2 @@
++# LiveDisplay HAL
++/(vendor|system/vendor)/bin/hw/vendor\.lineage\.livedisplay-service\.samsung-exynos    u:object_r:hal_lineage_livedisplay_exynos_exec:s0
+diff --git a/exynos/vendor/hal_lineage_livedisplay_exynos.te b/exynos/vendor/hal_lineage_livedisplay_exynos.te
+new file mode 100644
+index 0000000..6ec0c30
+--- /dev/null
++++ b/exynos/vendor/hal_lineage_livedisplay_exynos.te
+@@ -0,0 +1,14 @@
++type hal_lineage_livedisplay_exynos, domain;
++hal_server_domain(hal_lineage_livedisplay_exynos, hal_lineage_livedisplay)
++
++type hal_lineage_livedisplay_exynos_exec, exec_type, vendor_file_type, file_type;
++init_daemon_domain(hal_lineage_livedisplay_exynos)
++
++binder_call(hal_lineage_livedisplay_exynos, servicemanager)
++
++# Allow LiveDisplay HAL's default implementation to use vendor-binder service
++vndbinder_use(hal_lineage_livedisplay_exynos)
++
++# Allow LiveDisplay to store files under /data/vendor/display and access them
++allow hal_lineage_livedisplay_exynos display_vendor_data_file:dir rw_dir_perms;
++allow hal_lineage_livedisplay_exynos display_vendor_data_file:file create_file_perms;
+diff --git a/libperfmgr/sepolicy.mk b/libperfmgr/sepolicy.mk
+new file mode 100644
+index 0000000..ed7872a
+--- /dev/null
++++ b/libperfmgr/sepolicy.mk
+@@ -0,0 +1,2 @@
++BOARD_VENDOR_SEPOLICY_DIRS += \
++    device/miku/sepolicy/libperfmgr/vendor
+diff --git a/libperfmgr/vendor/hal_power_default.te b/libperfmgr/vendor/hal_power_default.te
+new file mode 100644
+index 0000000..4713c01
+--- /dev/null
++++ b/libperfmgr/vendor/hal_power_default.te
+@@ -0,0 +1,13 @@
++# To do powerhint on nodes defined in powerhint.json
++allow hal_power_default cgroup:dir search;
++allow hal_power_default cgroup:file rw_file_perms;
++allow hal_power_default sysfs_devices_system_cpu:file rw_file_perms;
++
++# To get/set powerhal state property
++set_prop(hal_power_default, vendor_power_prop)
++
++# To grant access to IStats service for metrics
++allow hal_power_default fwk_stats_service:service_manager find;
++
++# Allow hal_power to access thermal service
++hal_client_domain(hal_power_default, hal_thermal)
+diff --git a/libperfmgr/vendor/property.te b/libperfmgr/vendor/property.te
+new file mode 100644
+index 0000000..d84c806
+--- /dev/null
++++ b/libperfmgr/vendor/property.te
+@@ -0,0 +1,2 @@
++# Power HAL
++vendor_public_prop(vendor_power_prop)
+diff --git a/libperfmgr/vendor/property_contexts b/libperfmgr/vendor/property_contexts
+new file mode 100644
+index 0000000..e37ced2
+--- /dev/null
++++ b/libperfmgr/vendor/property_contexts
+@@ -0,0 +1,2 @@
++# Power HAL
++vendor.powerhal.                   u:object_r:vendor_power_prop:s0
+diff --git a/libperfmgr/vendor/vendor_init.te b/libperfmgr/vendor/vendor_init.te
+new file mode 100644
+index 0000000..f48eff3
+--- /dev/null
++++ b/libperfmgr/vendor/vendor_init.te
+@@ -0,0 +1,2 @@
++# To set powerhal init property
++set_prop(vendor_init, vendor_power_prop)

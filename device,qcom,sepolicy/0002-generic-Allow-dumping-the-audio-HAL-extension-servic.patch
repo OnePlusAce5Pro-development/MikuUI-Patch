@@ -1,0 +1,39 @@
+From 37d1705b78092609b2f0f0353b582235dca910d2 Mon Sep 17 00:00:00 2001
+From: chandu078 <chandudyavanapelli03@gmail.com>
+Date: Wed, 28 Oct 2026 15:43:17 +0000
+Subject: [PATCH 2/2] generic: Allow dumping the audio HAL extension service
+
+Allow dumpstate to call the service and let the service write to the
+supplied dump file descriptor.
+
+Test: sepolicy_tests treble_sepolicy_tests
+Change-Id: Iee008f8bcefe645548fa1b8a2053762081928773
+---
+ generic/private/dumpstate.te             | 1 +
+ generic/private/qtiaudiohalvendorextn.te | 4 ++++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/generic/private/dumpstate.te b/generic/private/dumpstate.te
+index db2ada99..14294f1a 100644
+--- a/generic/private/dumpstate.te
++++ b/generic/private/dumpstate.te
+@@ -2,6 +2,7 @@
+ # SPDX-License-Identifier: BSD-3-Clause-Clear
+ 
+ get_prop(dumpstate,vendor_sys_bugreport_cpuinfo_disable)
++binder_call(dumpstate, vendor_qtiaudiohalvendorextn)
+ binder_call(dumpstate, virtualizationservice)
+ 
+ # Allow dumpstate to make binder calls to vold
+diff --git a/generic/private/qtiaudiohalvendorextn.te b/generic/private/qtiaudiohalvendorextn.te
+index 9ea8defc..ad85afa6 100644
+--- a/generic/private/qtiaudiohalvendorextn.te
++++ b/generic/private/qtiaudiohalvendorextn.te
+@@ -6,3 +6,7 @@ init_daemon_domain(vendor_qtiaudiohalvendorextn)
+ binder_use(vendor_qtiaudiohalvendorextn)
+ 
+ allow vendor_qtiaudiohalvendorextn vendor_audioserver_service:service_manager { add find };
++
++# Allow dumpstate to collect service diagnostics.
++allow vendor_qtiaudiohalvendorextn dumpstate:fd use;
++allow vendor_qtiaudiohalvendorextn dumpstate:fifo_file write;
